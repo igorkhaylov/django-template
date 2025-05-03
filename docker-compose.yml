@@ -1,0 +1,85 @@
+name: django-template
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile
+    volumes:
+      - ./backend:/app
+      - ./.vscode:/app/.vscode
+      # dockerfile: Dockerfile
+    command: sleep infinity
+    depends_on:
+      - memcached
+      # memcached:
+      #   condition: service_healthy
+    ports:
+      - 80:8000
+    restart: unless-stopped
+
+
+  memcached:
+    image: memcached:latest
+    expose:
+      - 11211
+    environment:
+      - MEMCACHED_MEMORY=64
+    command: memcached -I 1m -v
+    # healthcheck:
+    #   test: ["CMD-SHELL", "echo 'stats' | nc localhost 11211 | grep -q STAT"]
+    #   interval: 30s
+    #   timeout: 5s
+    #   retries: 3
+    #   start_period: 10s
+    restart: unless-stopped
+
+
+##################################################################################################
+
+# volumes:
+#   minio_data:
+
+
+# networks:
+#   minio-net:
+
+
+# services:
+#   minio:
+#     image: "quay.io/minio/minio:${MINIO_TAG}"
+#     command: server --console-address ":9001" /data
+#     networks:
+#       minio-net:
+#     expose:
+#       - "9000"
+#       - "9001"
+#     volumes:
+#       - minio_data:/data
+#     environment:
+#       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+#       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+#       MINIO_BROWSER_REDIRECT_URL: ${MINIO_BROWSER_REDIRECT_URL}
+#     healthcheck:
+#       test: [ "CMD", "mc", "ready", "local" ]
+#       interval: 5s
+#       timeout: 5s
+#       retries: 5
+#     restart: unless-stopped
+
+#   nginx:
+#     build:
+#       context: ./nginx
+#     ports:
+#       - "80:80"
+#       - "443:443"
+#     networks:
+#       minio-net:
+#     environment:
+#       MINIO_DOMAIN: ${MINIO_DOMAIN}
+#       NGINX_MAX_BODY_SIZE: ${NGINX_MAX_BODY_SIZE}
+#     depends_on:
+#       minio:
+#         condition: service_healthy
+#     restart: unless-stopped
+

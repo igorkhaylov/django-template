@@ -1,0 +1,8 @@
+{
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+  "cSpell.language": "en,ru",
+  "cSpell.words": [
+    "dotenv",
+    "runserver"
+  ]
+}
