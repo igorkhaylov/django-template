@@ -1,6 +1,3 @@
-import os
-
-
 def str_to_bool(string, allow_null=False):
     NULL_VALUES = {"null", "", None}
     TRUE_VALUES = {

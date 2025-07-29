@@ -1,15 +1,19 @@
-# Database
-# https://docs.djangoproject.com/en/5.1/ref/settings/#databases
-import os
+from decouple import config
 
-import dj_database_url
 
 __all__ = ("DATABASES",)
 
+# Database
+# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
+
+
 DATABASES = {
-    "default": dj_database_url.config(
-        default=os.getenv("DATABASE_URL"),
-        conn_max_age=600,
-        conn_health_checks=True,
-    ),
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": config("POSTGRES_DB"),
+        "USER": config("POSTGRES_USER"),
+        "PASSWORD": config("POSTGRES_PASSWORD"),
+        "HOST": config("POSTGRES_HOST"),
+        "PORT": config("POSTGRES_PORT"),
+    }
 }

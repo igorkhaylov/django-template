@@ -1,0 +1,17 @@
+{
+  "python.defaultInterpreterPath": "/usr/local/bin/python",
+  "python.analysis.extraPaths": [
+    "./apps"
+  ],
+  "editor.defaultFormatter": "ms-python.black-formatter",
+  "editor.formatOnSave": true,
+  "cSpell.language": "en,ru",
+  "cSpell.words": [
+    "ASGI",
+    "dotenv",
+    "igorkhaylov",
+    "psycopg",
+    "pytest",
+    "runserver"
+  ]
+}

@@ -1,6 +1,6 @@
+from .base import BASE_DIR
 from django.utils.translation import gettext_lazy as _
 
-from .base import BASE_DIR
 
 __all__ = (
     "LANGUAGE_CODE",
@@ -11,11 +11,10 @@ __all__ = (
     "LOCALE_PATHS",
 )
 
-
 # Internationalization
-# https://docs.djangoproject.com/en/5.1/topics/i18n/
+# https://docs.djangoproject.com/en/5.2/topics/i18n/
 
-LANGUAGE_CODE = "ru"
+LANGUAGE_CODE = "en-us"
 
 TIME_ZONE = "Asia/Tashkent"  # "UTC"
 
@@ -24,8 +23,8 @@ USE_I18N = True
 USE_TZ = True
 
 LANGUAGES = (
-    ("ru", _("Русский")),
     ("en", _("English")),
+    ("ru", _("Русский")),
 )
 
 LOCALE_PATHS = [

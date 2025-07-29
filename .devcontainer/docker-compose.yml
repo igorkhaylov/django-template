@@ -1,0 +1,24 @@
+name: django-template
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: ./.devcontainer/backend/Dockerfile
+    volumes:
+      - ./backend:/app
+      - vscode-data:/root/.vscode-server
+      - vscode-cache:/root/.cache
+    healthcheck:
+      test: ["CMD-SHELL", "exit 0"]
+      interval: 30s
+      retries: 3
+      start_period: 10s
+      timeout: 5s
+    command: sleep infinity
+    restart: unless-stopped
+
+
+volumes:
+  vscode-data:
+  vscode-cache:

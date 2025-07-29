@@ -11,3 +11,25 @@ tree --gitignore -I .git -a # Filter by using .gitignore files
 # -J            Prints out an JSON representation of the tree
 # -I pattern    Do not list files that match the given pattern.
 ```
+
+```bash
+# Create project in current directory
+django-admin startproject config .
+```
+
+
+# Poetry
+```bash
+poetry init
+poetry show --tree
+poetry add django psycopg[binary]
+poetry add --group dev pytest django-debug-toolbar
+poetry install --only main
+poetry install --with dev
+```
+
+
+# Django management commands
+```bash
+python manage.py collectstatic --no-input --clear
+```
