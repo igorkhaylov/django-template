@@ -30,7 +30,7 @@ services:
       retries: 3
       start_period: 10s
       timeout: 5s
-    command: python manage.py runserver 0.0.0.0:8000
+    command: bash scripts/entrypoint.sh
     restart: unless-stopped
 
   redis:

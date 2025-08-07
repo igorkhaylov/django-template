@@ -4,6 +4,9 @@
     "./apps"
   ],
   "editor.defaultFormatter": "ms-python.black-formatter",
+  "editor.codeActionsOnSave": {
+        "source.organizeImports": "explicit"
+    },
   "editor.formatOnSave": true,
   "cSpell.language": "en,ru",
   "cSpell.words": [
@@ -12,6 +15,7 @@
     "igorkhaylov",
     "psycopg",
     "pytest",
-    "runserver"
+    "runserver",
+    "stdimage"
   ]
 }

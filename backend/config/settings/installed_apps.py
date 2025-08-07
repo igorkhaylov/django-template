@@ -17,9 +17,11 @@ THIRD_PARTY_APPS = [
 ]
 
 LOCAL_APPS = [
-    # "users",
+    "users",
     # "redirector",
 ]
 # Combine all apps into INSTALLED_APPS
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
+
+
 # TODO add debug toolbar based on DEBUG

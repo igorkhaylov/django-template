@@ -24,12 +24,14 @@ poetry init
 poetry show --tree
 poetry add django psycopg[binary]
 poetry add --group dev pytest django-debug-toolbar
-poetry install --only main
-poetry install --with dev
+poetry install --no-root --only main
+poetry install --no-root --with dev
 ```
 
 
 # Django management commands
 ```bash
-python manage.py collectstatic --no-input --clear
+# create new app
+cd apps
+python ../manage.py startapp new_app
 ```
