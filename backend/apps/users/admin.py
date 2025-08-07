@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.contrib.admin.models import LogEntry
 from django.contrib.auth.admin import UserAdmin as AuthUserAdmin
 from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
@@ -71,14 +72,12 @@ class LogEntryUserFilter(admin.SimpleListFilter):
     def lookups(self, request, model_admin):
         out = []
         # # sqlite3
-        # for i in admin.models.LogEntry.objects.values(
+        # for i in LogEntry.objects.values(
         #     "user_id", "user__username"
         # ).distinct():
         #     out += [(f"{i['user_id']}", f"{i['user__username']}")]
         # postgres
-        for i in (
-            admin.models.LogEntry.objects.all().order_by("user_id").distinct("user_id")
-        ):
+        for i in LogEntry.objects.all().order_by("user_id").distinct("user_id"):
             out += [(f"{i.user_id}", f"{i.user.username}")]
         return out
 
@@ -89,7 +88,7 @@ class LogEntryUserFilter(admin.SimpleListFilter):
         return queryset.filter(user_id=int(value))
 
 
-@admin.register(admin.models.LogEntry)
+@admin.register(LogEntry)
 class LogEntryAdmin(admin.ModelAdmin):
     list_display = (
         "__str__",
