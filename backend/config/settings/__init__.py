@@ -6,5 +6,6 @@ from .localization import *
 from .middleware import *
 
 # from .rosetta import *
+# from .logging import *
 from .settings import *
 from .templates import *

@@ -15,13 +15,12 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 
-from django.contrib import admin
-from django.urls import include, path
-from django.http import JsonResponse
-from django.conf.urls.i18n import i18n_patterns
 from django.conf import settings
+from django.conf.urls.i18n import i18n_patterns
+from django.contrib import admin
+from django.http import JsonResponse
+from django.urls import include, path
 from django.utils.translation import gettext_lazy as _
-
 
 APP_NAME = settings.APP_NAME
 

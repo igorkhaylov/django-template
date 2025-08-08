@@ -1,6 +1,6 @@
-from .base import BASE_DIR
 from django.utils.translation import gettext_lazy as _
 
+from .base import BASE_DIR
 
 __all__ = (
     "LANGUAGE_CODE",

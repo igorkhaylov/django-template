@@ -1,6 +1,5 @@
 from .base import BASE_DIR
 
-
 __all__ = ("TEMPLATES",)
 
 TEMPLATES = [

@@ -1,6 +1,5 @@
 from decouple import config
 
-
 __all__ = ("DATABASES",)
 
 # Database
