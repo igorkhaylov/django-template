@@ -1,0 +1,42 @@
+name: Deploy with Docker Compose
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Select environment'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - prod
+          - dev
+  push:
+    branches:
+      - master
+      - dev
+
+
+jobs:
+  build-and-test:
+    runs-on: [self-hosted, linux, x64, "${{ github.ref == 'refs/heads/master' && 'prod' || github.ref == 'refs/heads/dev' && 'dev'  }}"]
+
+    environment: ${{ github.event.inputs.environment || (github.ref == 'refs/heads/master' && 'prod' || 'dev') }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create .env file
+        run: |
+          echo "${{ github.event.inputs.environment == 'prod' && secrets.PROD_ENV || secrets.DEV_ENV }}" >> .env
+          cat .env
+
+      - name: Create dumps
+        run: |
+          ./scripts/dump_all.sh
+          mkdir -p ../../../../dumps
+          mv dumps/* ../../../../dumps/.
+
+      - name: Check up docker Compose
+        run: docker compose up --build -d

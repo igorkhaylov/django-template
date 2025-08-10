@@ -78,7 +78,6 @@ services:
       - django-static:/app/static:ro
       - django-media:/app/media:ro
     depends_on:
-      # - backend
       backend:
         condition: service_healthy
     restart: unless-stopped
@@ -93,11 +92,6 @@ volumes:
 
 
 ##################################################################################################
-
-
-# networks:
-#   minio-net:
-
 
 # services:
 #   minio:
