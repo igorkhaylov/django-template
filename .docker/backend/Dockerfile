@@ -6,7 +6,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     POETRY_VERSION=2.1.3 \
     POETRY_VIRTUALENVS_CREATE=false \
-    PRODUCTION=0
+    PRODUCTION=1
 
 
 RUN apt-get update && apt-get install -y \
