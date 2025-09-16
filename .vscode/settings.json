@@ -1,7 +1,15 @@
 {
+    "cSpell.language": "en,ru",
     "cSpell.words": [
+        "celerybeat",
         "healthcheck",
         "isready",
-        "runserver"
+        "keepalive",
+        "pycache",
+        "pytest",
+        "runserver",
+        "sendfile",
+        "startapp",
+        "startproject"
     ]
 }
