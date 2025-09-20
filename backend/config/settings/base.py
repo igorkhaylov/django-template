@@ -14,6 +14,7 @@ import os
 import sys
 from pathlib import Path
 
+from corsheaders.defaults import default_headers, default_methods
 from decouple import config
 from django.core.management.utils import get_random_secret_key
 
@@ -31,6 +32,10 @@ __all__ = (
     "WSGI_APPLICATION",
     "ASGI_APPLICATION",
     "ROOT_URLCONF",
+    "CORS_ALLOWED_ORIGINS",
+    "CORS_ALLOW_HEADERS",
+    "CORS_ALLOW_METHODS",
+    "CORS_ALLOW_CREDENTIALS",
 )
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -72,6 +77,24 @@ CSRF_TRUSTED_ORIGINS = config(
     default="",
     cast=lambda v: [s.strip() for s in v.split(",") if s.strip()],
 )
+
+CORS_ALLOWED_ORIGINS = config(
+    "DJANGO_CORS_ALLOWED_ORIGINS",
+    default="",
+    cast=lambda v: [s.strip() for s in v.split(",") if s.strip()],
+)
+
+CORS_ALLOW_HEADERS = (
+    *default_headers,
+    # "my-custom-header",
+)
+
+CORS_ALLOW_METHODS = (
+    *default_methods,
+    # "POKE",
+)
+
+CORS_ALLOW_CREDENTIALS = True
 
 
 WSGI_APPLICATION = "config.wsgi.application"

@@ -1,7 +1,9 @@
 {
     "cSpell.language": "en,ru",
     "cSpell.words": [
+        "asgi",
         "celerybeat",
+        "corsheaders",
         "healthcheck",
         "isready",
         "keepalive",

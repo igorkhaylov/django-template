@@ -11,6 +11,7 @@
   "cSpell.language": "en,ru",
   "cSpell.words": [
     "ASGI",
+    "corsheaders",
     "dotenv",
     "igorkhaylov",
     "psycopg",
