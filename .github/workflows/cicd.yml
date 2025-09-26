@@ -19,18 +19,36 @@ on:
 
 jobs:
   build-and-test:
-    runs-on: [self-hosted, linux, x64, "${{ github.ref == 'refs/heads/master' && 'prod' || github.ref == 'refs/heads/dev' && 'dev'  }}"]
-
-    environment: ${{ github.event.inputs.environment || (github.ref == 'refs/heads/master' && 'prod' || 'dev') }}
+    runs-on: [self-hosted, linux, x64, "${{ github.ref == 'refs/heads/master' && 'prod' || github.ref == 'refs/heads/dev' && 'dev' || 'unknown' }}"]
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
-      - name: Create .env file
+      - name: Create target env
         run: |
-          echo "${{ github.event.inputs.environment == 'prod' && secrets.PROD_ENV || secrets.DEV_ENV }}" >> .env
-          cat .env
+          echo "TARGET_ENV=${{ github.event.inputs.environment || github.ref == 'refs/heads/master' && 'prod' || github.ref == 'refs/heads/dev' && 'dev' || 'dev' }}" >> $GITHUB_ENV
+
+      - name: Set up environment variables
+        run: |
+          # Определяем значение переменной окружения в зависимости от ветки или ввода пользователя
+          if [[ "$TARGET_ENV" == "prod" ]]; then
+            echo "Environment: prod"
+            echo "${{ secrets.PROD_ENV }}" >> .env
+          elif [[ "$TARGET_ENV" == "dev" ]]; then
+            echo "Environment: dev"
+            echo "${{ secrets.DEV_ENV }}" >> .env
+          else
+            echo "Environment: dev (default)"
+            echo "${{ secrets.DEV_ENV }}" >> .env
+          fi
+
+      # - name: Create firebase_credentials.json
+      #   env:
+      #     FIREBASE_CREDENTIALS: ${{ (env.TARGET_ENV == 'prod' && secrets.PROD_FIREBASE_CREDENTIALS) || (env.TARGET_ENV == 'dev' && secrets.DEV_FIREBASE_CREDENTIALS) || secrets.DEV_FIREBASE_CREDENTIALS }}
+      #   run: |
+      #     mkdir -p firebase_credentials
+      #     echo "$FIREBASE_CREDENTIALS" | jq . > firebase_credentials/firebase_credentials.json
 
       - name: Create dumps
         run: |

@@ -21,6 +21,7 @@ from django.contrib import admin
 from django.http import JsonResponse
 from django.urls import include, path
 from django.utils.translation import gettext_lazy as _
+from decouple import config
 
 APP_NAME = settings.APP_NAME
 
@@ -42,6 +43,11 @@ urlpatterns += i18n_patterns(
     path("admin/", admin.site.urls),
 )
 
+
+if not config("PRODUCTION", cast=bool, default=True):
+    from debug_toolbar.toolbar import debug_toolbar_urls
+
+    urlpatterns += debug_toolbar_urls()
 
 # if settings.DEBUG:
 #     from django.conf.urls.static import static

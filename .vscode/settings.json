@@ -3,15 +3,21 @@
     "cSpell.words": [
         "asgi",
         "celerybeat",
+        "collectstatic",
         "corsheaders",
+        "createsuperuserauto",
+        "FLUSHALL",
+        "gunicorn",
         "healthcheck",
         "isready",
         "keepalive",
+        "psql",
         "pycache",
         "pytest",
         "runserver",
         "sendfile",
         "startapp",
-        "startproject"
+        "startproject",
+        "wsgi"
     ]
 }

@@ -1,3 +1,5 @@
+name: django-template-dev
+
 services:
   backend:
     build:

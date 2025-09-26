@@ -68,20 +68,21 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 ALLOWED_HOSTS = config(
     "DJANGO_ALLOWED_HOSTS",
     default="",
-    cast=lambda v: [s.strip() for s in v.split(",") if s.strip()],
+    cast=lambda v: [x for s in v.split(",") if (x := s.strip())],  # new optimized
+    # cast=lambda v: [s.strip() for s in v.split(",") if s.strip()],  # old
 )
 
 
 CSRF_TRUSTED_ORIGINS = config(
     "DJANGO_CSRF_TRUSTED_ORIGINS",
     default="",
-    cast=lambda v: [s.strip() for s in v.split(",") if s.strip()],
+    cast=lambda v: [x for s in v.split(",") if (x := s.strip())],
 )
 
 CORS_ALLOWED_ORIGINS = config(
     "DJANGO_CORS_ALLOWED_ORIGINS",
     default="",
-    cast=lambda v: [s.strip() for s in v.split(",") if s.strip()],
+    cast=lambda v: [x for s in v.split(",") if (x := s.strip())],
 )
 
 CORS_ALLOW_HEADERS = (
