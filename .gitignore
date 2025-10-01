@@ -4,3 +4,4 @@ __pycache__
 celerybeat-schedule
 dumps/
 backend/static/
+*django.mo

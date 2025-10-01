@@ -1,0 +1,144 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-10-01 09:01+0500\n"
+"PO-Revision-Date: 2025-10-01 09:04+0500\n"
+"Last-Translator: Anonymous User <anonymous@user.tld>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Translated-Using: django-rosetta 0.10.2\n"
+
+#: apps/users/admin.py:15
+msgid "Personal info2"
+msgstr "Personal info2"
+
+#: apps/users/admin.py:26
+msgid "Permissions"
+msgstr "Permissions"
+
+#: apps/users/admin.py:37
+msgid "Important dates"
+msgstr "Important dates"
+
+#: apps/users/admin.py:61
+msgid "Превью"
+msgstr "Preview"
+
+#: apps/users/models.py:71
+#| msgid "username"
+msgid "Username"
+msgstr "Username"
+
+#: apps/users/models.py:77
+msgid "Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only."
+msgstr ""
+"Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only."
+
+#: apps/users/models.py:80
+msgid "A user with that username already exists."
+msgstr "A user with that username already exists."
+
+#: apps/users/models.py:84
+msgid "Name"
+msgstr ""
+
+#: apps/users/models.py:86
+#| msgid "date of birth"
+msgid "Date of birth"
+msgstr "Date of birth"
+
+#: apps/users/models.py:88
+#| msgid "gender"
+msgid "Gender"
+msgstr "Gender"
+
+#: apps/users/models.py:92
+msgid "Photo"
+msgstr "Photo"
+
+#: apps/users/models.py:96
+#| msgid "staff status"
+msgid "Staff status"
+msgstr "Staff status"
+
+#: apps/users/models.py:98
+msgid "Designates whether the user can log into this admin site."
+msgstr "Designates whether the user can log into this admin site."
+
+#: apps/users/models.py:101
+#| msgid "active"
+msgid "Active"
+msgstr "Active"
+
+#: apps/users/models.py:104
+msgid ""
+"Designates whether this user should be treated as active. Unselect this "
+"instead of deleting accounts."
+msgstr ""
+"Designates whether this user should be treated as active. Unselect this "
+"instead of deleting accounts."
+
+#: apps/users/models.py:108
+msgid "date joined"
+msgstr "date joined"
+
+#: apps/users/models.py:118
+msgid "User"
+msgstr "User"
+
+#: apps/users/models.py:119
+#| msgid "users"
+msgid "Users"
+msgstr "Users"
+
+#: apps/users/models.py:132
+msgid "email address"
+msgstr "email address"
+
+#: apps/users/models.py:134
+msgid "This email address is already in use."
+msgstr "This email address is already in use."
+
+#: apps/users/models.py:140
+msgid "user"
+msgstr "user"
+
+#: apps/users/models.py:143
+msgid "verified"
+msgstr "verified"
+
+#: apps/users/models.py:145
+msgid "Indicates whether the email address has been verified."
+msgstr "Indicates whether the email address has been verified."
+
+#: apps/users/models.py:147
+msgid "created at"
+msgstr "created at"
+
+#: apps/users/models.py:150
+#| msgid "user email"
+msgid "User email"
+msgstr "User email"
+
+#: apps/users/models.py:151
+#| msgid "user emails"
+msgid "User emails"
+msgstr "User emails"
+
+#: apps/users/models.py:170
+msgid "This email is already verified by another user."
+msgstr "This email is already verified by another user."
+
+#~ msgid "name"
+#~ msgstr "name"

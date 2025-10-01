@@ -11,12 +11,17 @@
   "cSpell.language": "en,ru",
   "cSpell.words": [
     "ASGI",
+    "collectstatic",
+    "compilemessages",
     "corsheaders",
+    "createsuperuserauto",
     "dotenv",
+    "gunicorn",
     "igorkhaylov",
     "psycopg",
     "pytest",
     "runserver",
-    "stdimage"
+    "stdimage",
+    "wsgi"
   ]
 }

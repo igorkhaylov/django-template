@@ -1,7 +1,7 @@
 __all__ = (
     "AUTH_PASSWORD_VALIDATORS",
-    "LOGIN_URL",
     "AUTH_USER_MODEL",
+    # "LOGIN_URL",
 )
 
 # Password validation
@@ -23,6 +23,5 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
-LOGIN_URL = "/admin/login/"
-
 AUTH_USER_MODEL = "users.User"
+# LOGIN_URL = "/admin/login/"

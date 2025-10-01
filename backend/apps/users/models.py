@@ -68,7 +68,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     uid = models.UUIDField(default=uuid.uuid4, editable=False)
 
     username = models.CharField(
-        _("username"),
+        _("Username"),
         max_length=150,
         unique=True,
         # default=generate_random_username,
@@ -81,11 +81,11 @@ class User(AbstractBaseUser, PermissionsMixin):
         },
     )
 
-    name = models.CharField(_("name"), max_length=150, blank=True)
+    name = models.CharField(_("Name"), max_length=150, blank=True)
 
-    date_of_birth = models.DateField(_("date of birth"), blank=True, null=True)
+    date_of_birth = models.DateField(_("Date of birth"), blank=True, null=True)
     gender = models.CharField(
-        _("gender"), choices=GenderChoices.choices, max_length=6, blank=True, null=True
+        _("Gender"), choices=GenderChoices.choices, max_length=6, blank=True, null=True
     )
 
     picture = StdImageField(
@@ -93,12 +93,12 @@ class User(AbstractBaseUser, PermissionsMixin):
     )
 
     is_staff = models.BooleanField(
-        _("staff status"),
+        _("Staff status"),
         default=False,
         help_text=_("Designates whether the user can log into this admin site."),
     )
     is_active = models.BooleanField(
-        _("active"),
+        _("Active"),
         default=False,
         help_text=_(
             "Designates whether this user should be treated as active. "
@@ -115,8 +115,8 @@ class User(AbstractBaseUser, PermissionsMixin):
         return f"{self.username} {self.name}".strip() or "Unnamed User"
 
     class Meta:
-        verbose_name = _("user")
-        verbose_name_plural = _("users")
+        verbose_name = _("User")
+        verbose_name_plural = _("Users")
         swappable = "AUTH_USER_MODEL"
         indexes = [
             models.Index(fields=["uid"]),
@@ -147,8 +147,8 @@ class UserEmail(models.Model):
     created_at = models.DateTimeField(_("created at"), default=timezone.now)
 
     class Meta:
-        verbose_name = _("user email")
-        verbose_name_plural = _("user emails")
+        verbose_name = _("User email")
+        verbose_name_plural = _("User emails")
         constraints = [
             models.UniqueConstraint(
                 fields=["email"],

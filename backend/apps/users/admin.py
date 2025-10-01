@@ -58,7 +58,7 @@ class UserAdmin(AuthUserAdmin):
     readonly_fields = ("picture_preview",)
     save_on_top = True
 
-    @admin.display(description=_("Превью"), ordering="picture")
+    @admin.display(description=_("Preview"), ordering="picture")
     def picture_preview(self, obj):
         if obj.picture:
             return format_html('<img src="{}" height="200" />', obj.picture.small.url)

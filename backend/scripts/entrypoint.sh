@@ -1,5 +1,8 @@
 #!/bin/bash
 
+echo ">>> Generate messages .mo files..."
+python manage.py compilemessages
+
 echo ">>> Apply database migrations..."
 python manage.py migrate --no-input
 

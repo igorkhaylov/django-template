@@ -35,3 +35,10 @@ poetry install --no-root --with dev
 cd apps
 python ../manage.py startapp new_app
 ```
+
+# generate locales
+```bash
+python manage.py makemessages -l ru -l en --ignore venv
+# compile locales
+python manage.py compilemessages
+```
