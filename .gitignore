@@ -1,7 +1,10 @@
 __pycache__
 *.pyc
 .env
-celerybeat-schedule
+backend/celerybeat-schedule
 dumps/
 backend/static/
+backend/media/
 *django.mo
+
+firebase_credentials/

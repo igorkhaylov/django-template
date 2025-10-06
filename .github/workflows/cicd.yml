@@ -11,10 +11,10 @@ on:
         options:
           - prod
           - dev
-  push:
-    branches:
-      - master
-      - dev
+  # push:
+  #   branches:
+  #     - master
+  #     - dev
 
 
 jobs:

@@ -22,6 +22,7 @@ django-admin startproject config .
 ```bash
 poetry init
 poetry show --tree
+poetry show -T
 poetry add django psycopg[binary]
 poetry add --group dev pytest django-debug-toolbar
 poetry install --no-root --only main
@@ -36,9 +37,23 @@ cd apps
 python ../manage.py startapp new_app
 ```
 
+
 # generate locales
 ```bash
 python manage.py makemessages -l ru -l en --ignore venv
 # compile locales
 python manage.py compilemessages
+```
+
+# update translation fields
+```bash
+# populate translation fields if field*_ru not exist in model
+python manage.py update_translation_fields
+```
+
+
+# generate random hex key
+```bash
+# generate random hex key with length 64 (can be changed)
+openssl rand -hex 64
 ```

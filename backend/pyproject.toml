@@ -17,7 +17,10 @@ dependencies = [
     "gunicorn (>=23.0.0,<24.0.0)",
     "setproctitle (>=1.3.6,<2.0.0)",
     "firebase-admin (>=7.1.0,<8.0.0)",
-    "django-rosetta (>=0.10.2,<0.11.0)"
+    "django-rosetta (>=0.10.2,<0.11.0)",
+    "django-modeltranslation (>=0.19.17,<0.20.0)",
+    "drf-spectacular (>=0.28.0,<0.29.0)",
+    "django-filter (>=25.1,<26.0)"
 ]
 
 

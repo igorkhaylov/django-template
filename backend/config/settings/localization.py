@@ -9,6 +9,8 @@ __all__ = (
     "USE_TZ",
     "LANGUAGES",
     "LOCALE_PATHS",
+    "MODELTRANSLATION_DEFAULT_LANGUAGE",
+    "MODELTRANSLATION_LANGUAGES",
 )
 
 # Internationalization
@@ -30,3 +32,8 @@ LANGUAGES = (
 LOCALE_PATHS = [
     BASE_DIR / "locale/",
 ]
+
+
+# Modeltranslation settings
+MODELTRANSLATION_DEFAULT_LANGUAGE = "ru"
+MODELTRANSLATION_LANGUAGES = ("ru", "en")

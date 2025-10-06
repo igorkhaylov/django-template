@@ -3,6 +3,7 @@ __all__ = ("INSTALLED_APPS",)
 # Application definition
 
 DJANGO_APPS = [
+    "modeltranslation",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -13,6 +14,9 @@ DJANGO_APPS = [
 
 THIRD_PARTY_APPS = [
     "rosetta",
+    "drf_spectacular",
+    "rest_framework",
+    "django_filters",
     "corsheaders",
 ]
 
