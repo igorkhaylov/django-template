@@ -18,6 +18,11 @@ class BaseModel(models.Model):
         db_index=True,
         default=uuid.uuid4,
     )
+    rank = models.PositiveIntegerField(
+        _("Rank"),
+        default=100,
+        help_text=_("Lower appears first; use to control display order."),
+    )
     created_at = models.DateTimeField(
         auto_now_add=True, verbose_name=_("Date and time of creation")
     )
