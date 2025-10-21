@@ -36,6 +36,9 @@ __all__ = (
     "CORS_ALLOW_HEADERS",
     "CORS_ALLOW_METHODS",
     "CORS_ALLOW_CREDENTIALS",
+    "REDIS_HOST",
+    "REDIS_PORT",
+    "CACHES",
 )
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -108,3 +111,18 @@ ROOT_URLCONF = "config.urls"
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+
+REDIS_HOST = config("REDIS_HOST", default="redis")
+REDIS_PORT = config("REDIS_PORT", default=6379, cast=int)
+# REDIS_DB = config("REDIS_DB")
+# REDIS_PASSWORD = config("REDIS_PASSWORD")
+
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": f"redis://{REDIS_HOST}:{REDIS_PORT}",
+        "TIMEOUT": 600,
+    }
+}

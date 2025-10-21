@@ -12,6 +12,7 @@
   "cSpell.words": [
     "asgi",
     "browsable",
+    "celerybeat",
     "collectstatic",
     "compilemessages",
     "corsheaders",

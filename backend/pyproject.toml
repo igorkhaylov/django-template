@@ -21,7 +21,9 @@ dependencies = [
     "django-modeltranslation (>=0.19.17,<0.20.0)",
     "drf-spectacular (>=0.28.0,<0.29.0)",
     "django-filter (>=25.1,<26.0)",
-    "python-dateutil (>=2.9.0.post0,<3.0.0)"
+    "python-dateutil (>=2.9.0.post0,<3.0.0)",
+    "redis (>=6.4.0,<7.0.0)",
+    "celery (>=5.5.3,<6.0.0)",
 ]
 
 

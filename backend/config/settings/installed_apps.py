@@ -18,6 +18,7 @@ THIRD_PARTY_APPS = [
     "rest_framework",
     "django_filters",
     "corsheaders",
+    "celery",
 ]
 
 LOCAL_APPS = [
