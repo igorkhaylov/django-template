@@ -10,7 +10,6 @@ class BaseModel(models.Model):
     """
     Base Model
     """
-
     uid = models.UUIDField(
         editable=False,
         unique=True,
@@ -32,7 +31,22 @@ class BaseModel(models.Model):
 
     class Meta:
         abstract = True
-        ordering = ("-created_at", "-id")
+        ordering = ("rank", "-created_at", "-id")
+        indexes = [
+            models.Index(fields=["rank"]),
+        ]
+
+    def __str__(self):
+        """
+        Универсальное текстовое представление для всех моделей, наследующих BaseModel.
+        Отображает имя модели и её идентификаторы.
+        """
+        model_name = self.__class__.__name__
+        # Используем getattr, чтобы не вызывать ошибку, если у модели нет title / name и т.п.
+        display_field = getattr(self, "name", None) or getattr(self, "title", None)
+        if display_field:
+            return f"{model_name} [{display_field}] (id={self.id})"
+        return f"{model_name} (id={self.id}, uid={getattr(self, "uid", None)})"
 
     def get_admin_url(self):
         """Генерирует ссылку для открытия страницы редактирования объекта в Django Admin"""
@@ -46,3 +60,12 @@ class BaseModel(models.Model):
         else:
             url = reverse(f"admin:{app_label}_{model_name}_add")
             return format_html('<a href="{}" target="_blank">Создать объект</a>', url)
+
+    def get_absolute_url(self):
+        """
+        Возвращает абсолютный URL для публичного просмотра объекта.
+        Может быть переопределён в дочерних моделях.
+        """
+        return reverse(
+            f"{self._meta.app_label}:{self._meta.model_name}_detail", args=[self.pk]
+        )

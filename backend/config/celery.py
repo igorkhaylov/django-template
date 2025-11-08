@@ -27,10 +27,10 @@ app.conf.broker_url = f"redis://{REDIS_HOST}:{REDIS_PORT}/0"
 app.conf.result_backend = f"redis://{REDIS_HOST}:{REDIS_PORT}/0"
 
 # --- Основные настройки ---
-app.conf.timezone = "Asia/Tashkent"
+app.conf.timezone = settings.TIME_ZONE
 app.conf.task_track_started = True
-task_soft_time_limit = 3 * 60 * 60  # предупреждение
-task_time_limit = 3 * 60 * 60 + 60  # принудительное убийство
+app.conf.task_soft_time_limit = 3 * 60 * 60  # предупреждение
+app.conf.task_time_limit = 3 * 60 * 60 + 60  # принудительное убийство через 60 секунд
 
 app.conf.task_default_queue = "celery"  # Название очереди по умолчанию, если не задано
 
