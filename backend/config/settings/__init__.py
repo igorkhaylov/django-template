@@ -8,10 +8,12 @@ from .localization import *
 from .middleware import *
 from .rest_framework import *
 from .rosetta import *
+from .settings import *
+from .storages import *
+from .templates import *
 
 # from .logging import *
-from .settings import *
-from .templates import *
+
 
 if not config("PRODUCTION", cast=bool, default=True):
     from .debug_toolbar import *

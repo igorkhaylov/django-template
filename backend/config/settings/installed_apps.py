@@ -13,6 +13,7 @@ DJANGO_APPS = [
 ]
 
 THIRD_PARTY_APPS = [
+    "django_cleanup.apps.CleanupConfig",
     "rosetta",
     "drf_spectacular",
     "rest_framework",

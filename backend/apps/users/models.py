@@ -2,6 +2,7 @@ import logging
 import uuid
 
 from common.generators import generate_random_username
+from common.models import BaseModel
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.contrib.auth.models import PermissionsMixin
 from django.contrib.auth.validators import ASCIIUsernameValidator
@@ -134,7 +135,7 @@ class UserEmail(models.Model):
         error_messages={"unique": _("This email address is already in use.")},
     )
     user = models.ForeignKey(
-        "User",
+        User,
         on_delete=models.CASCADE,
         related_name="emails",
         verbose_name=_("user"),
@@ -177,3 +178,35 @@ class UserEmail(models.Model):
 
     def __str__(self):
         return f"{self.email} ({'verified' if self.is_verified else 'unverified'})"
+
+
+# class UserSession(BaseModel):
+#     class FirebaseTokenStatus(models.TextChoices):
+#         UNKNOWN = "unknown", _("Unknown")
+#         SUBSCRIBED = "subscribed", _("Subscribed")
+#         UNSUBSCRIBED = "unsubscribed", _("Unsubscribed")
+
+#     user = models.ForeignKey(
+#         User,
+#         on_delete=models.CASCADE,
+#         related_name="sessions",
+#         verbose_name=_("user"),
+#     )
+
+#     jti = models.CharField(max_length=255, unique=True)
+#     expires_at = models.DateTimeField()
+
+#     firebase_token = models.CharField(max_length=2500, blank=True, null=True)
+#     firebase_token_status = models.CharField(
+#         max_length=60,
+#         choices=FirebaseTokenStatus.choices,
+#         default=FirebaseTokenStatus.UNKNOWN,
+#     )
+#     ip_address = models.GenericIPAddressField()
+#     user_agent = models.CharField(max_length=5000)
+#     custom_user_agent = models.CharField(max_length=5000, blank=True, null=True)
+
+#     class Meta:
+#         verbose_name = _("User session")
+#         verbose_name_plural = _("User sessions")
+#         ordering = ["-created_at", "-id"]
