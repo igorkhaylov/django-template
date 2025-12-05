@@ -57,3 +57,18 @@ python manage.py update_translation_fields
 # generate random hex key with length 64 (can be changed)
 openssl rand -hex 64
 ```
+
+
+##### При создании из шаблона нужно заменить:
+
+###### ./docker-compose.yml
+- change docker compose name
+- change nginx service ports for django and minio
+
+###### ./.env.example
+- change port in MINIO_ENDPOINT
+- change port in DJANGO_CSRF_TRUSTED_ORIGINS
+- other changes for security
+
+###### ./.devcontainer/backend/devcontainer.json
+- change name and add port
