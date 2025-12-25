@@ -21,6 +21,7 @@ class BaseModel(models.Model):
         _("Rank"),
         default=100,
         help_text=_("Lower appears first; use to control display order."),
+        db_index=True,
     )
     created_at = models.DateTimeField(
         auto_now_add=True, verbose_name=_("Date and time of creation")

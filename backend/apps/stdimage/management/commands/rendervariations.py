@@ -1,7 +1,5 @@
 from django.apps import apps
-from django.core.files.storage import get_storage_class
 from django.core.management import BaseCommand, CommandError
-
 from stdimage.utils import render_variations
 
 
@@ -65,7 +63,7 @@ class Command(BaseCommand):
                 do_render=do_render,
                 variations=field.variations,
                 replace=replace,
-                storage=field.storage.deconstruct()[0],
+                storage=field.storage,
                 field_class=field.attr_class,
                 ignore_missing=ignore_missing,
             )
@@ -94,7 +92,7 @@ class Command(BaseCommand):
 
 
 def render_field_variations(kwargs):
-    kwargs["storage"] = get_storage_class(kwargs["storage"])()
+    # kwargs["storage"] = get_storage_class(kwargs["storage"])()
     ignore_missing = kwargs.pop("ignore_missing")
     do_render = kwargs.pop("do_render")
     try:
