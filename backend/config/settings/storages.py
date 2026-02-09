@@ -25,7 +25,7 @@ AWS_QUERYSTRING_AUTH = False
 # AWS_S3_CUSTOM_DOMAIN = f"192.168.0.102:9000/{AWS_STORAGE_BUCKET_NAME}"
 
 protocol_name, custom_domain = config(
-    "MINIO_ENDPOINT", default="http://localhost:9000"
+    "DJANGO_MINIO_CUSTOM_URL", default="http://localhost:9000"
 ).split("://")
 
 AWS_S3_URL_PROTOCOL = f"{protocol_name}:"
