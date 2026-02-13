@@ -4,9 +4,9 @@ __all__ = ("STORAGES",)
 
 
 # Настройки S3 (MinIO), работают если не указать в STORAGES["default"]["OPTIONS"]
-AWS_ACCESS_KEY_ID = config("MINIO_APP_USER")
-AWS_SECRET_ACCESS_KEY = config("MINIO_APP_PASSWORD")
-AWS_STORAGE_BUCKET_NAME = config("MINIO_BUCKET_NAME")
+AWS_ACCESS_KEY_ID = config("DJANGO_MINIO_ACCESS_KEY")
+AWS_SECRET_ACCESS_KEY = config("DJANGO_MINIO_SECRET_KEY")
+AWS_STORAGE_BUCKET_NAME = config("DJANGO_MINIO_BUCKET_NAME")
 AWS_S3_ENDPOINT_URL = config(
     "DJANGO_MINIO_ENDPOINT"
 )  # Внутренний адрес Docker для загрузки
