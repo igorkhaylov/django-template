@@ -55,20 +55,22 @@ app.conf.beat_schedule_filename = "celerybeat-schedule"
 app.autodiscover_tasks()
 
 
-@shared_task
-def print_hello():
-    print("Hello from Celery!")
+# --- Example tasks ---
+# @shared_task
+# def say_hello():
+#     """Example task for say hello."""
+#     print("Hello from Celery!")
 
 
-app.conf.beat_schedule = {
-    "print_hello": {
-        "task": "config.celery.print_hello",
-        # "schedule": crontab(hour="*", minute=0),  # Execute every hour at 0 minute
-        "schedule": 10,  # Execute every 10 seconds
-        "args": [],
-        "kwargs": {},
-        "options": {
-            "queue": "celery",
-        },
-    },
-}
+# app.conf.beat_schedule = {
+#     "say_hello": {
+#         "task": "config.celery.say_hello",
+#         # "schedule": crontab(hour=3, minute=0),  # Every day at 3:00 AM
+#         "schedule": 10,  # Execute every 10 seconds
+#         "args": [],
+#         "kwargs": {},
+#         "options": {
+#             "queue": "celery",
+#         },
+#     },
+# }

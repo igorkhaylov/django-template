@@ -67,10 +67,6 @@ services:
       interval: 3s
       retries: 5
       timeout: 3s
-    deploy:
-      resources:
-        limits:
-          memory: "256m"
     restart: unless-stopped
 
 

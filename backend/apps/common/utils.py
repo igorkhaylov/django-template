@@ -34,19 +34,6 @@ def str_to_bool(string, allow_null=False):
         return False
 
 
-def parse_env_list(value: str, delimiter=","):
-    """
-    Универсальная функция для парсинга строковой переменной окружения в список.
-
-    :param value: Значение
-    :param delimiter: Разделитель элементов (по умолчанию ',')
-    :return: Список значений без пробелов и пустых элементов
-    """
-    if not value:
-        return []
-    return [item.strip() for item in value.split(delimiter) if item.strip()]
-
-
 def to_cyrillic_translate(s1):
     # Определение соответствия между символами латиницы и кириллицы
     eng_to_cyr = "`qwertyuiop[]asdfghjkl;'zxcvbnm,./"
