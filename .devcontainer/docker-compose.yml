@@ -72,6 +72,16 @@ services:
     entrypoint: [ "/bin/sh", "/init_minio.sh" ]
     restart: on-failure
 
+  # --- NGINX OVERRIDE: добавляем MinIO proxy поверх production конфига ---
+  nginx:
+    volumes:
+      - ./.devcontainer/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "9050:9000"  # MinIO S3 API + Console UI
+    depends_on:
+      minio:
+        condition: service_healthy
+
 volumes:
   vscode-data:
   vscode-cache:
