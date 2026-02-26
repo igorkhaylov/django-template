@@ -15,8 +15,6 @@ x-backend-defaults: &backend-defaults
       condition: service_healthy
     redis:
       condition: service_healthy
-    minio:
-      condition: service_healthy
   restart: unless-stopped
 
 
@@ -67,55 +65,8 @@ services:
       interval: 3s
       retries: 5
       timeout: 3s
-    deploy:
-      resources:
-        limits:
-          memory: "256m"
     restart: unless-stopped
 
-
-  # --- MINIO SERVICES ---
-  minio:
-    # image: minio/minio:RELEASE.2025-09-07T16-13-09Z-cpuv1
-    # last version with full ui
-    image: quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z-cpuv1
-    env_file:
-      - ./.env
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
-      MINIO_BROWSER_REDIRECT_URL: "${MINIO_BROWSER_REDIRECT_URL}"
-    expose:
-      - "9000"   # S3 API
-      - "9001"   # Web-консоль
-    volumes:
-      - minio-data:/data
-    command: server /data --console-address ":9001"
-    healthcheck:
-      test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/9000'"]
-      interval: 3s
-      timeout: 3s
-      retries: 5
-    restart: unless-stopped
-
-  # ---------- Одноразовый инициализатор MinIO ----------
-  create-buckets:
-    # image: minio/mc:RELEASE.2024-11-21T17-21-54Z
-    image: alpine:latest
-    depends_on:
-      minio:
-        condition: service_healthy
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
-      MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME}
-      MINIO_APP_USER: ${MINIO_APP_USER}
-      MINIO_APP_PASSWORD: ${MINIO_APP_PASSWORD}
-    volumes:
-      - ./.docker/minio/policies:/policies
-      - ./.docker/minio/init_minio.sh:/init_minio.sh
-    entrypoint: ["/bin/sh", "/init_minio.sh"]
-    restart: on-failure
 
   # --- NGINX (Единая точка входа) ---
   nginx:
@@ -136,4 +87,3 @@ volumes:
   postgres-data:
   redis-data:
   django-static:
-  minio-data:

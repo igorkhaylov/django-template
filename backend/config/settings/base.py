@@ -16,7 +16,6 @@ from pathlib import Path
 
 from corsheaders.defaults import default_headers, default_methods
 from decouple import config
-from django.core.management.utils import get_random_secret_key
 
 __all__ = (
     "APP_NAME",
@@ -53,10 +52,10 @@ sys.path.append(os.path.join(BASE_DIR, "apps"))
 APP_NAME = config("DJANGO_APP_NAME", default="AppName")
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = config("DJANGO_SECRET_KEY", default=get_random_secret_key())
+SECRET_KEY = config("DJANGO_SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = config("DJANGO_DEBUG", cast=bool, default=True)
+DEBUG = config("DJANGO_DEBUG", cast=bool, default=False)
 
 
 SECURE_SSL_REDIRECT = False

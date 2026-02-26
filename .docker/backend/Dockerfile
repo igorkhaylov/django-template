@@ -25,11 +25,10 @@ WORKDIR /app
 
 RUN pip install --no-cache-dir "poetry==$POETRY_VERSION"
 
-COPY ../../backend/pyproject.toml ../../backend/poetry.lock ./
+COPY ./backend/pyproject.toml ./backend/poetry.lock ./
 
 RUN poetry install --no-root --only main
 
-COPY ../../backend/ .
+COPY ./backend/ .
 
-CMD ["python", "infinity"]
-# CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+CMD ["sleep", "infinity"]

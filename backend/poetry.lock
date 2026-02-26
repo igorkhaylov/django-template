@@ -680,6 +680,31 @@ polib = ">=1.1.0"
 requests = ">=2.30.0"
 
 [[package]]
+name = "django-stdimage"
+version = "6.1.0"
+description = "Django Standarized Image Field"
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = []
+develop = false
+
+[package.dependencies]
+Django = ">=2.2"
+pillow = ">=2.5"
+
+[package.extras]
+drf = ["djangorestframework (>=3.0)"]
+progressbar = ["progressbar2 (>=3.0.0)"]
+test = ["pytest", "pytest-cov", "pytest-django"]
+
+[package.source]
+type = "git"
+url = "https://github.com/igorkhaylov/django-stdimage.git"
+reference = "HEAD"
+resolved_reference = "be3e1e48c1ffefca2274cea9411bc046152953a8"
+
+[[package]]
 name = "django-storages"
 version = "1.14.6"
 description = "Support for many storage backends in Django"
@@ -2386,4 +2411,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.13,<4"
-content-hash = "de95fceaa5fa30d35e99e354ba14bc9994a9dc6541d43860db3a8b0f0f4ae271"
+content-hash = "91ebc9ac4c28ea94289705dc6616c09679bc8d664d1731cba960b1494d109d20"

@@ -26,6 +26,7 @@ dependencies = [
     "celery (>=5.5.3,<6.0.0)",
     "django-storages[s3] (>=1.14.6,<2.0.0)",
     "django-cleanup (>=9.0.0,<10.0.0)",
+    "django-stdimage @ git+https://github.com/igorkhaylov/django-stdimage.git",
 ]
 
 

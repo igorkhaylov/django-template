@@ -20,6 +20,7 @@ THIRD_PARTY_APPS = [
     "django_filters",
     "corsheaders",
     "celery",
+    "stdimage",
 ]
 
 LOCAL_APPS = [
