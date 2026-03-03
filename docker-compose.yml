@@ -1,7 +1,6 @@
 name: django-template
 
 
-# --- DEFAULT SERVICE ---
 x-backend-defaults: &backend-defaults
   build:
     context: .
@@ -19,7 +18,6 @@ x-backend-defaults: &backend-defaults
 
 
 services:
-  # --- BACKEND SERVICE ---
   backend:
     <<: *backend-defaults
     expose:
@@ -33,6 +31,14 @@ services:
       timeout: 3s
     command: bash scripts/entrypoint.sh
     restart: unless-stopped
+
+  backend-celery-worker-default:
+    <<: *backend-defaults
+    command: celery -A config worker --loglevel=INFO --concurrency=2 -Q celery
+
+  backend-celery-beat:
+    <<: *backend-defaults
+    command: celery -A config beat --loglevel=INFO
 
   # --- REDIS SERVICE ---
   redis:
@@ -48,7 +54,6 @@ services:
       timeout: 3s
     restart: unless-stopped
 
-  # --- POSTGRES SERVICE ---
   db:
     image: postgres:17.4
     environment:
@@ -68,7 +73,6 @@ services:
     restart: unless-stopped
 
 
-  # --- NGINX (Единая точка входа) ---
   nginx:
     image: nginx:stable-alpine
     ports:
