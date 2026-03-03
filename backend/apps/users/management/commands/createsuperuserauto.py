@@ -17,17 +17,11 @@ class Command(BaseCommand):
         password = os.environ.get("DJANGO_SUPERUSER_PASSWORD", "12345")
 
         if not username or not password:
-            self.stdout.write(
-                self.style.ERROR(
-                    "DJANGO_SUPERUSER_USERNAME and DJANGO_SUPERUSER_PASSWORD must be set"
-                )
-            )
+            self.stdout.write(self.style.ERROR("DJANGO_SUPERUSER_USERNAME and DJANGO_SUPERUSER_PASSWORD must be set"))
             return
 
         if User.objects.filter(is_superuser=True).exists():
-            self.stdout.write(
-                self.style.WARNING("Skipped: a superuser already exists")
-            )
+            self.stdout.write(self.style.WARNING("Skipped: a superuser already exists"))
             return
 
         try:
@@ -35,12 +29,8 @@ class Command(BaseCommand):
                 username=username,
                 password=password,
             )
-            self.stdout.write(
-                self.style.SUCCESS(f'Superuser "{username}" created successfully')
-            )
+            self.stdout.write(self.style.SUCCESS(f'Superuser "{username}" created successfully'))
         except IntegrityError as e:
-            self.stdout.write(
-                self.style.ERROR(f"Failed to create superuser: {e}")
-            )
+            self.stdout.write(self.style.ERROR(f"Failed to create superuser: {e}"))
         except Exception as e:
             self.stdout.write(self.style.ERROR(f"Unexpected error: {e}"))

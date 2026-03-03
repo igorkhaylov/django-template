@@ -72,9 +72,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         unique=True,
         # default=generate_random_username,
         validators=[ASCIIUsernameValidator(), MinLengthValidator(5)],
-        help_text=_(
-            "Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only."
-        ),
+        help_text=_("Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only."),
         error_messages={
             "unique": _("A user with that username already exists."),
         },
@@ -83,13 +81,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     name = models.CharField(_("Name"), max_length=150, blank=True)
 
     date_of_birth = models.DateField(_("Date of birth"), blank=True, null=True)
-    gender = models.CharField(
-        _("Gender"), choices=GenderChoices.choices, max_length=6, blank=True, null=True
-    )
+    gender = models.CharField(_("Gender"), choices=GenderChoices.choices, max_length=6, blank=True, null=True)
 
-    picture = StdImageField(
-        _("Photo"), upload_to="users/%Y/%m/%d/", blank=True, null=True
-    )
+    picture = StdImageField(_("Photo"), upload_to="users/%Y/%m/%d/", blank=True, null=True)
 
     is_staff = models.BooleanField(
         _("Staff status"),
@@ -100,8 +94,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         _("Active"),
         default=False,
         help_text=_(
-            "Designates whether this user should be treated as active. "
-            "Unselect this instead of deleting accounts."
+            "Designates whether this user should be treated as active. " "Unselect this instead of deleting accounts."
         ),
     )
     date_joined = models.DateTimeField(_("date joined"), default=timezone.now)
@@ -159,14 +152,8 @@ class UserEmail(models.Model):
     def clean(self):
         super().clean()
         if self.is_verified:
-            if (
-                UserEmail.objects.filter(email=self.email, is_verified=True)
-                .exclude(user=self.user)
-                .exists()
-            ):
-                raise ValidationError(
-                    _("This email is already verified by another user.")
-                )
+            if UserEmail.objects.filter(email=self.email, is_verified=True).exclude(user=self.user).exists():
+                raise ValidationError(_("This email is already verified by another user."))
 
     def save(self, *args, **kwargs):
         self.full_clean()

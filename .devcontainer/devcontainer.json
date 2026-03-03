@@ -26,10 +26,14 @@
         "anthropic.claude-code"
       ],
       "settings": {
-        // "python.defaultInterpreterPath": "/usr/local/bin/python"
-        // "editor.defaultFormatter": "ms-python.black-formatter",
-        // "editor.formatOnSave": true,
-        // "editor.formatOnPaste": false
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "charliermarsh.ruff",
+        "[python]": {
+          "editor.defaultFormatter": "charliermarsh.ruff",
+          "editor.codeActionsOnSave": {
+            "source.organizeImports": "explicit"
+          }
+        }
       }
     }
   },

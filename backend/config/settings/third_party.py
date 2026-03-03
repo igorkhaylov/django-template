@@ -46,9 +46,7 @@ _minio_secret_key = config("DJANGO_MINIO_SECRET_KEY")
 _minio_bucket = config("DJANGO_MINIO_BUCKET_NAME")
 _minio_endpoint = config("DJANGO_MINIO_ENDPOINT")  # Internal Docker address
 
-_protocol, _domain = config(
-    "DJANGO_MINIO_CUSTOM_URL", default="http://localhost:9000"
-).split("://")
+_protocol, _domain = config("DJANGO_MINIO_CUSTOM_URL", default="http://localhost:9000").split("://")
 
 STORAGES = {
     "default": {
@@ -77,9 +75,7 @@ STORAGES = {
 
 ROSETTA_MESSAGES_PER_PAGE = 20
 ROSETTA_SHOW_AT_ADMIN_PANEL = True
-ROSETTA_ACCESS_CONTROL_FUNCTION = lambda user: user.is_superuser or user.has_perm(
-    "auth.can_change_rosetta_messages"
-)
+ROSETTA_ACCESS_CONTROL_FUNCTION = lambda user: user.is_superuser or user.has_perm("auth.can_change_rosetta_messages")
 ROSETTA_LOGIN_URL = "/admin/login/"
 
 # =============================================================================
@@ -95,9 +91,7 @@ class _JsonFormatter(logging.Formatter):
         log_message = {
             "level": record.levelname,
             "module": record.module,
-            "timestamp": datetime.fromtimestamp(
-                record.created, tz=ZoneInfo(TIME_ZONE)
-            ).isoformat(),
+            "timestamp": datetime.fromtimestamp(record.created, tz=ZoneInfo(TIME_ZONE)).isoformat(),
         }
         if isinstance(record.msg, dict):
             log_message["message"] = record.msg
