@@ -43,7 +43,7 @@ urlpatterns += i18n_patterns(
 )
 
 
-if settings.DEBUG:
+if settings.ENVIRONMENT == "dev":
     from debug_toolbar.toolbar import debug_toolbar_urls
 
     urlpatterns += debug_toolbar_urls()
