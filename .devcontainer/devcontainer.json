@@ -37,6 +37,7 @@
       }
     }
   },
+  "postCreateCommand": "pre-commit install",
   "forwardPorts": [
     // 8050
   ]

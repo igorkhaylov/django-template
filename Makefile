@@ -59,6 +59,9 @@ lint:
 format:
 	$(COMPOSE) exec backend ruff format .
 
+pre-commit-install:
+	pre-commit install
+
 # Connect to containers
 bash:
 	$(COMPOSE) exec -it backend bash

@@ -2,7 +2,8 @@
 set -euo pipefail
 
 CONTAINER_NAME="minio"
-IMAGE="minio/minio:RELEASE.2025-09-07T16-13-09Z-cpuv1"
+# IMAGE="minio/minio:RELEASE.2025-09-07T16-13-09Z-cpuv1"
+IMAGE="quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z-cpuv1"
 VOLUME_NAME="minio-data"
 
 MINIO_ROOT_USER="${MINIO_ROOT_USER:-minioadmin}"
