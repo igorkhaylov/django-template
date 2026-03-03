@@ -1,16 +1,5 @@
-from .auth import *
-from .base import *
-from .database import *
-from .installed_apps import *
-from .localization import *
-from .logging import *
-from .middleware import *
-from .rest_framework import *
-from .rosetta import *
-from .settings import *
-from .storages import *
-from .templates import *
+from .base import *  # noqa: F403
+from .third_party import *  # noqa: F403
 
-
-if DEBUG:
-    from .debug_toolbar import *
+if ENVIRONMENT == "dev":  # noqa: F405
+    from .dev import *  # noqa: F403
