@@ -1,8 +1,7 @@
 import json
 import logging
 from datetime import datetime
-
-import pytz
+from zoneinfo import ZoneInfo
 
 from .base import BASE_DIR
 from .localization import TIME_ZONE
@@ -21,12 +20,10 @@ class JsonFormatter(logging.Formatter):
             "level": record.levelname,
             "module": record.module,
         }
-        # log_message["timestamp"] = datetime.fromtimestamp(record.created, tz=timezone.utc).isoformat()
         log_message["timestamp"] = datetime.fromtimestamp(
-            record.created, tz=pytz.timezone(TIME_ZONE)
+            record.created, tz=ZoneInfo(TIME_ZONE)
         ).isoformat()
 
-        # Если message — словарь, добавляем его напрямую
         if isinstance(record.msg, dict):
             log_message["message"] = record.msg
         else:
@@ -45,7 +42,7 @@ LOGGING = {
         "verbose": {
             "format": "{levelname} {asctime} {module} {message}",
             "style": "{",
-            "datefmt": "%Y-%m-%dT%H:%M:%S%z",  # ISO 8601 формат
+            "datefmt": "%Y-%m-%dT%H:%M:%S%z",
         },
         "simple": {
             "format": "{levelname} {message}",
@@ -56,7 +53,7 @@ LOGGING = {
         "console": {
             "level": "DEBUG",
             "class": "logging.StreamHandler",
-            "formatter": "verbose",  # "simple",
+            "formatter": "verbose",
         },
         "error_file": {
             "level": "ERROR",
@@ -73,15 +70,14 @@ LOGGING = {
     },
     "loggers": {
         "django": {
-            # "handlers": ["console", "error_file"],
             "handlers": ["console", "error_file"],
-            "level": "INFO",  # DEBUG, INFO, WARNING, ERROR, CRITICAL
-            "propagate": False,  # propagate=True, логи будут передаваться родительским логгерам
+            "level": "INFO",
+            "propagate": False,
         },
         "file_json": {
             "handlers": ["file_json"],
-            "level": "DEBUG",  # DEBUG, INFO, WARNING, ERROR, CRITICAL
-            "propagate": True,  # propagate=True, логи будут передаваться родительским логгерам
+            "level": "DEBUG",
+            "propagate": True,
         },
     },
 }

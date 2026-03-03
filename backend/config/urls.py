@@ -15,7 +15,6 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 
-from decouple import config
 from django.conf import settings
 from django.conf.urls.i18n import i18n_patterns
 from django.contrib import admin
@@ -44,16 +43,10 @@ urlpatterns += i18n_patterns(
 )
 
 
-if not config("PRODUCTION", cast=bool, default=True):
+if settings.DEBUG:
     from debug_toolbar.toolbar import debug_toolbar_urls
 
     urlpatterns += debug_toolbar_urls()
 
 if "rosetta" in settings.INSTALLED_APPS:
     urlpatterns += [path("rosetta/", include("rosetta.urls"))]
-
-
-# if settings.DEBUG:
-#     from django.conf.urls.static import static
-#     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-#     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

@@ -1,60 +1,46 @@
-import os
 import logging
-from django.core.management.base import BaseCommand
+import os
+
 from django.contrib.auth import get_user_model
+from django.core.management.base import BaseCommand
 from django.db import IntegrityError
 
-# Настройка логирования
 logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    help = "Создаёт суперпользователя с использованием переменных окружения, только если нет других суперпользователей"
+    help = "Creates a superuser from environment variables if no superusers exist"
 
     def handle(self, *args, **options):
         User = get_user_model()
         username = os.environ.get("DJANGO_SUPERUSER_USERNAME", "admin")
         password = os.environ.get("DJANGO_SUPERUSER_PASSWORD", "12345")
 
-        # Проверка, что переменные окружения заданы
         if not username or not password:
             self.stdout.write(
                 self.style.ERROR(
-                    "Ошибка: DJANGO_SUPERUSER_USERNAME и DJANGO_SUPERUSER_PASSWORD должны быть установлены"
+                    "DJANGO_SUPERUSER_USERNAME and DJANGO_SUPERUSER_PASSWORD must be set"
                 )
-            )
-            logger.error(
-                "Ошибка: Не заданы DJANGO_SUPERUSER_USERNAME или DJANGO_SUPERUSER_PASSWORD"
             )
             return
 
-        # Проверка, есть ли уже суперпользователи в базе
         if User.objects.filter(is_superuser=True).exists():
             self.stdout.write(
-                self.style.WARNING(
-                    "Суперпользователь не создан: в базе уже есть суперпользователь"
-                )
-            )
-            logger.warning(
-                "Пропуск создания суперпользователя: в базе уже есть суперпользователь"
+                self.style.WARNING("Skipped: a superuser already exists")
             )
             return
 
         try:
-            # Создание суперпользователя
-            user = User.objects.create_superuser(
+            User.objects.create_superuser(
                 username=username,
                 password=password,
             )
             self.stdout.write(
-                self.style.SUCCESS(f'Суперпользователь "{username}" успешно создан')
+                self.style.SUCCESS(f'Superuser "{username}" created successfully')
             )
-            logger.info(f'Суперпользователь "{username}" успешно создан')
         except IntegrityError as e:
             self.stdout.write(
-                self.style.ERROR(f"Ошибка при создании суперпользователя: {e}")
+                self.style.ERROR(f"Failed to create superuser: {e}")
             )
-            logger.error(f"Ошибка при создании суперпользователя: {e}")
         except Exception as e:
-            self.stdout.write(self.style.ERROR(f"Неизвестная ошибка: {e}"))
-            logger.error(f"Неизвестная ошибка при создании суперпользователя: {e}")
+            self.stdout.write(self.style.ERROR(f"Unexpected error: {e}"))

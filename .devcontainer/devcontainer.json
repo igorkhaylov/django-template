@@ -4,7 +4,7 @@
   "name": "Django Template 8050",
   // "dockerComposeFile": "../docker-compose.yml",
   "dockerComposeFile": [
-    "../../docker-compose.dev.yml",
+    "../docker-compose.dev.yml",
   ],
   "service": "backend",
   "workspaceFolder": "/app",

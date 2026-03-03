@@ -58,11 +58,9 @@ SECRET_KEY = config("DJANGO_SECRET_KEY")
 DEBUG = config("DJANGO_DEBUG", cast=bool, default=False)
 
 
-SECURE_SSL_REDIRECT = False
-SESSION_COOKIE_SECURE = False
-if not DEBUG:
-    SECURE_SSL_REDIRECT = True
-    SESSION_COOKIE_SECURE = True
+SECURE_SSL_REDIRECT = not DEBUG
+SESSION_COOKIE_SECURE = not DEBUG
+SECURE_REDIRECT_EXEMPT = [r"^healthcheck/"]
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
@@ -70,8 +68,7 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 ALLOWED_HOSTS = config(
     "DJANGO_ALLOWED_HOSTS",
     default="",
-    cast=lambda v: [x for s in v.split(",") if (x := s.strip())],  # new optimized
-    # cast=lambda v: [s.strip() for s in v.split(",") if s.strip()],  # old
+    cast=lambda v: [x for s in v.split(",") if (x := s.strip())],
 )
 
 

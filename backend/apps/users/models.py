@@ -23,7 +23,6 @@ class CustomUserManager(BaseUserManager):
             while self.model.objects.filter(username=username).exists():
                 username = generate_random_username()
             logger.info(f"Generated username: {username}")
-            # raise ValueError("Пользователь должен иметь логин!")
 
         user = self.model(username=username, **extra_fields)
 
@@ -50,8 +49,7 @@ class CustomUserManager(BaseUserManager):
         )
 
     def get_by_natural_key(self, username_or_email):
-        """Позволяет аутентифицировать пользователя по username или любому email."""
-        # TODO добавить номер телефона
+        """Authenticate user by username or any associated email."""
         if "@" in username_or_email:
             try:
                 email_obj = UserEmail.objects.get(email=username_or_email)
@@ -63,8 +61,8 @@ class CustomUserManager(BaseUserManager):
 
 class User(AbstractBaseUser, PermissionsMixin):
     class GenderChoices(models.TextChoices):
-        male = ("M", "Мужской")
-        female = ("F", "Женский")
+        male = ("M", _("Male"))
+        female = ("F", _("Female"))
 
     uid = models.UUIDField(default=uuid.uuid4, editable=False)
 
@@ -125,7 +123,7 @@ class User(AbstractBaseUser, PermissionsMixin):
 
 
 class UserEmail(models.Model):
-    """Модель для хранения email-адресов пользователя."""
+    """Stores email addresses associated with a user."""
 
     uid = models.UUIDField(default=uuid.uuid4, editable=False)
 
@@ -159,7 +157,6 @@ class UserEmail(models.Model):
         ]
 
     def clean(self):
-        """Проверяет, что подтверждённый email не используется другим пользователем."""
         super().clean()
         if self.is_verified:
             if (
@@ -172,41 +169,8 @@ class UserEmail(models.Model):
                 )
 
     def save(self, *args, **kwargs):
-        """Запускает валидацию перед сохранением."""
         self.full_clean()
         super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.email} ({'verified' if self.is_verified else 'unverified'})"
-
-
-# class UserSession(BaseModel):
-#     class FirebaseTokenStatus(models.TextChoices):
-#         UNKNOWN = "unknown", _("Unknown")
-#         SUBSCRIBED = "subscribed", _("Subscribed")
-#         UNSUBSCRIBED = "unsubscribed", _("Unsubscribed")
-
-#     user = models.ForeignKey(
-#         User,
-#         on_delete=models.CASCADE,
-#         related_name="sessions",
-#         verbose_name=_("user"),
-#     )
-
-#     jti = models.CharField(max_length=255, unique=True)
-#     expires_at = models.DateTimeField()
-
-#     firebase_token = models.CharField(max_length=2500, blank=True, null=True)
-#     firebase_token_status = models.CharField(
-#         max_length=60,
-#         choices=FirebaseTokenStatus.choices,
-#         default=FirebaseTokenStatus.UNKNOWN,
-#     )
-#     ip_address = models.GenericIPAddressField()
-#     user_agent = models.CharField(max_length=5000)
-#     custom_user_agent = models.CharField(max_length=5000, blank=True, null=True)
-
-#     class Meta:
-#         verbose_name = _("User session")
-#         verbose_name_plural = _("User sessions")
-#         ordering = ["-created_at", "-id"]

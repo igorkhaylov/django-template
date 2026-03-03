@@ -4,7 +4,7 @@ name: django-template
 x-backend-defaults: &backend-defaults
   build:
     context: .
-    dockerfile: ./.docker/backend/Dockerfile
+    dockerfile: ./Dockerfile
   env_file:
     - ./.env
   volumes:
@@ -78,7 +78,7 @@ services:
     ports:
       - "8050:80"
     volumes:
-      - ./.docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - django-static:/app/static:ro
     depends_on:
       backend:

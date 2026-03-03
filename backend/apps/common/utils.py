@@ -35,11 +35,8 @@ def str_to_bool(string, allow_null=False):
 
 
 def to_cyrillic_translate(s1):
-    # Определение соответствия между символами латиницы и кириллицы
+    """Translate Latin keyboard layout to Cyrillic."""
     eng_to_cyr = "`qwertyuiop[]asdfghjkl;'zxcvbnm,./"
     cyr_chars = "ёйцукенгшщзхъфывапролджэячсмитьбю."
-
-    # Создание словаря перевода
     translation = {ord(eng): cyr for eng, cyr in zip(eng_to_cyr, cyr_chars)}
-
     return s1.translate(translation)
