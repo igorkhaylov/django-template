@@ -1,0 +1,83 @@
+
+x-backend-defaults: &backend-defaults
+  build:
+    context: .
+    dockerfile: ./Dockerfile
+    args:
+      DEV: "true"
+  env_file:
+    - ./.env
+  volumes:
+    - .:/app
+    - django-static:/app/static
+    - vscode-data:/root/.vscode-server
+    - vscode-cache:/root/.cache
+    - zed-data:/root/.local/share/zed
+    - ~/.ssh:/tmp/.host-ssh:ro
+  depends_on:
+    db:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+
+  command: sleep infinity
+  restart: unless-stopped
+
+
+services:
+  backend:
+    <<: *backend-defaults
+    expose:
+      - 8000
+
+  redis:
+    image: redis:8
+    expose:
+      - 6379
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 3s
+      retries: 5
+      timeout: 3s
+    restart: unless-stopped
+
+  db:
+    image: postgres:17.4
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    expose:
+      - 5432
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "sh -c 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}'" ]
+      # test: [ "CMD", "pg_isready", "-U", "${POSTGRES_USER}", "-d", "${POSTGRES_DB}" ]
+      interval: 3s
+      retries: 5
+      timeout: 3s
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:stable-alpine
+    volumes:
+      - ./nginx/nginx.dev.conf:/etc/nginx/nginx.conf:ro
+      - django-static:/app/static:ro
+    ports:
+      - "8050:80"
+    depends_on:
+      backend:
+        condition: service_started
+    restart: unless-stopped
+
+
+volumes:
+  django-static:
+  postgres-data:
+  redis-data:
+  vscode-data:
+  vscode-cache:
+  zed-data:

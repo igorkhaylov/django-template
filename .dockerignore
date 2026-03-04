@@ -1,0 +1,10 @@
+.git
+.github
+.devcontainer
+.docker
+dumps/
+*.md
+.env
+.env.example
+.dockerignore
+.gitignore

@@ -6,7 +6,7 @@ DUMP_DIR="$DUMPS_BASE_DIR/${TIMESTAMP}"
 DB_CONTAINER="db"
 BACKEND_CONTAINER="backend"
 
-# Load environments from ../.env
+# Load environment variables
 set -a
 source "$(dirname "$0")/../.env"
 set +a
@@ -17,10 +17,10 @@ MEDIA_FILES_TAR="${DUMP_DIR}/media_backup.tar.gz"
 DOCKER_DB_DUMP_FILE="/tmp/backup_${TIMESTAMP}.sql"
 DOCKER_MEDIA_TAR_FILE="/tmp/media_files_${TIMESTAMP}.tar.gz"
 
-echo "Создание директории дампа: ${DUMP_DIR}"
+echo "Creating dump directory: ${DUMP_DIR}"
 mkdir -p "$DUMP_DIR"
 
-echo "Создание дампа базы данных внутри контейнера '${DB_CONTAINER}'..."
+echo "Creating database dump inside '${DB_CONTAINER}' container..."
 docker compose exec -T "$DB_CONTAINER" pg_dump \
     -U "$POSTGRES_USER" \
     --no-owner \
@@ -31,38 +31,38 @@ docker compose exec -T "$DB_CONTAINER" pg_dump \
     "$POSTGRES_DB"
 
 if [ $? -ne 0 ]; then
-    echo "❌ Ошибка создания дампа БД!"
+    echo "Error: database dump failed!"
     exit 1
 fi
 
-echo "Копирование дампа БД на хост..."
+echo "Copying database dump to host..."
 docker compose cp "${DB_CONTAINER}:${DOCKER_DB_DUMP_FILE}" "$DB_DUMP_FILE" || {
-    echo "❌ Ошибка копирования дампа БД!"
+    echo "Error: failed to copy database dump!"
     exit 1
 }
 
 docker compose exec -T "$DB_CONTAINER" rm "$DOCKER_DB_DUMP_FILE"
 
-echo "✅ Дамп БД успешно сохранён: $DB_DUMP_FILE"
+echo "Database dump saved: $DB_DUMP_FILE"
 
-# -------------- Дамп медиафайлов Django --------------
+# -------------- Django media files dump --------------
 
-echo "Создание архива медиафайлов Django из '${BACKEND_CONTAINER}:/app/media'..."
+echo "Archiving Django media files from '${BACKEND_CONTAINER}:/app/media'..."
 docker compose exec -T "$BACKEND_CONTAINER" tar -czf "$DOCKER_MEDIA_TAR_FILE" -C /app media
 
 if [ $? -ne 0 ]; then
-    echo "❌ Ошибка архивации медиафайлов!"
+    echo "Error: media files archiving failed!"
     exit 1
 fi
 
-echo "Копирование архива медиафайлов на хост..."
+echo "Copying media archive to host..."
 docker compose cp "${BACKEND_CONTAINER}:${DOCKER_MEDIA_TAR_FILE}" "$MEDIA_FILES_TAR" || {
-    echo "❌ Ошибка копирования архива медиафайлов!"
+    echo "Error: failed to copy media archive!"
     exit 1
 }
 
 docker compose exec -T "$BACKEND_CONTAINER" rm "$DOCKER_MEDIA_TAR_FILE"
 
-echo "✅ Архив медиафайлов Django сохранён: $MEDIA_FILES_TAR"
+echo "Django media archive saved: $MEDIA_FILES_TAR"
 
-echo "🎉 Резервное копирование завершено успешно!"
+echo "Backup completed successfully!"

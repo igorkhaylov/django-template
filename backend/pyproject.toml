@@ -26,7 +26,7 @@ dependencies = [
     "celery (>=5.5.3,<6.0.0)",
     "django-storages[s3] (>=1.14.6,<2.0.0)",
     "django-cleanup (>=9.0.0,<10.0.0)",
-    "django-stdimage @ git+https://github.com/igorkhaylov/django-stdimage.git",
+    "django-stdimage @ git+https://github.com/igorkhaylov/django-stdimage.git@v1.0.0",
 ]
 
 
@@ -36,5 +36,27 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.4.1"
+pytest-django = "^4.9.0"
 django-debug-toolbar = "^6.0.0"
+ruff = "^0.8.0"
+pre-commit = "^4.0.0"
+pyright = "^1.1.408"
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings"
+python_files = ["tests.py", "test_*.py"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["config", "users", "common"]
+section-order = ["future", "standard-library", "django", "third-party", "first-party", "local-folder"]
+
+[tool.ruff.lint.isort.sections]
+django = ["django"]
 
