@@ -14,6 +14,8 @@ RUN apt-get update && apt-get install -y \
     gcc \
     curl \
     gettext \
+    git \
+    openssh-client \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -23,6 +25,6 @@ RUN pip install --no-cache-dir "poetry==$POETRY_VERSION" virtualenv --upgrade
 
 COPY ./backend/pyproject.toml ./backend/poetry.lock ./
 
-RUN poetry install --no-root --only main
+RUN poetry install --no-root --with dev
 
-COPY ./backend/ .
+CMD ["sleep", "infinity"]
