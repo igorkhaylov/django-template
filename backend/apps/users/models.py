@@ -1,8 +1,8 @@
+import datetime
 import logging
 import uuid
 
 from common.generators import generate_random_username
-from common.models import BaseModel
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.contrib.auth.models import PermissionsMixin
 from django.contrib.auth.validators import ASCIIUsernameValidator
@@ -50,11 +50,11 @@ class CustomUserManager(BaseUserManager):
         )
 
     def get_by_natural_key(self, username_or_email):
-        """Позволяет аутентифицировать пользователя по username или любому email."""
+        """Позволяет аутентифицировать пользователя по username или подтверждённому email."""
         # TODO добавить номер телефона
         if "@" in username_or_email:
             try:
-                email_obj = UserEmail.objects.get(email=username_or_email)
+                email_obj = UserEmail.objects.get(email=username_or_email, is_verified=True)
                 return email_obj.user
             except UserEmail.DoesNotExist:
                 pass
@@ -178,6 +178,65 @@ class UserEmail(models.Model):
 
     def __str__(self):
         return f"{self.email} ({'verified' if self.is_verified else 'unverified'})"
+
+
+class EmailVerificationToken(models.Model):
+    """Токен для подтверждения email-адреса."""
+
+    TOKEN_LIFETIME_HOURS = 24
+
+    uid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    user_email = models.ForeignKey(
+        UserEmail,
+        on_delete=models.CASCADE,
+        related_name="verification_tokens",
+        verbose_name=_("user email"),
+    )
+    expires_at = models.DateTimeField(_("expires at"))
+    created_at = models.DateTimeField(_("created at"), default=timezone.now)
+
+    class Meta:
+        verbose_name = _("Email verification token")
+        verbose_name_plural = _("Email verification tokens")
+
+    def save(self, *args, **kwargs):
+        if not self.pk:
+            self.expires_at = timezone.now() + datetime.timedelta(hours=self.TOKEN_LIFETIME_HOURS)
+        super().save(*args, **kwargs)
+
+    @property
+    def is_expired(self) -> bool:
+        return timezone.now() >= self.expires_at
+
+    def verify(self) -> bool:
+        """
+        Подтверждает email. Возвращает True если успешно, False если токен истёк
+        или email уже подтверждён другим пользователем.
+        """
+        if self.is_expired:
+            return False
+
+        email_obj = self.user_email
+
+        # Проверяем: нет ли уже верифицированного email у другого пользователя
+        already_verified = (
+            UserEmail.objects.filter(email=email_obj.email, is_verified=True)
+            .exclude(user=email_obj.user)
+            .exists()
+        )
+        if already_verified:
+            return False
+
+        email_obj.is_verified = True
+        email_obj.save(update_fields=["is_verified"])
+
+        # Удаляем все токены для этого email (чистим использованные и дубли)
+        EmailVerificationToken.objects.filter(user_email=email_obj).delete()
+
+        return True
+
+    def __str__(self):
+        return f"Token for {self.user_email.email} (expires {self.expires_at:%Y-%m-%d %H:%M})"
 
 
 # class UserSession(BaseModel):

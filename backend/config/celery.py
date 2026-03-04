@@ -5,8 +5,7 @@ https://docs.celeryq.dev/en/latest/userguide/configuration.html
 
 import os
 
-from celery import Celery, shared_task
-from celery.schedules import crontab
+from celery import Celery
 from django.conf import settings
 
 # Set the default Django settings module for the 'celery' program.
