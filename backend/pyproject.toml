@@ -53,5 +53,8 @@ target-version = "py313"
 select = ["E", "F", "I", "UP", "B"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["apps", "config"]
+known-django = ["django"]
+known-third-party = ["rest_framework", "drf_spectacular", "celery", "decouple"]
+known-first-party = ["config", "users", "common"]
+section-order = ["future", "standard-library", "django", "third-party", "known-third-party", "first-party", "local-folder"]
 
