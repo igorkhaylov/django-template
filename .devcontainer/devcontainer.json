@@ -11,7 +11,8 @@
   "mounts": [
     "type=bind,source=${localEnv:HOME}/.claude,target=/root/.claude",
     "type=bind,source=${localEnv:HOME}/.claude.json,target=/root/.claude.json",
-    "type=bind,source=${localEnv:HOME}/.gitconfig,target=/root/.gitconfig,readonly"
+    "type=bind,source=${localEnv:HOME}/.gitconfig,target=/root/.gitconfig,readonly",
+    "type=bind,source=${localEnv:HOME}/.ssh,target=/root/.ssh,readonly"
   ],
   "customizations": {
     "vscode": {
