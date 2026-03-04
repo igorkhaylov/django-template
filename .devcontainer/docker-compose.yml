@@ -7,6 +7,7 @@ services:
       - ./backend:/app
       - vscode-data:/root/.vscode-server
       - vscode-cache:/root/.cache
+      - vscode-claude:/root/.claude
     healthcheck:
       test: [ "CMD-SHELL", "exit 0" ]
       interval: 30s
@@ -86,3 +87,4 @@ volumes:
   vscode-data:
   vscode-cache:
   minio-data:
+  vscode-claude:
