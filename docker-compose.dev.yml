@@ -12,6 +12,7 @@ x-backend-defaults: &backend-defaults
     - django-static:/app/static
     - vscode-data:/root/.vscode-server
     - vscode-cache:/root/.cache
+    - zed-data:/root/.local/share/zed
     - ~/.ssh:/tmp/.host-ssh:ro
   depends_on:
     db:
@@ -79,3 +80,4 @@ volumes:
   redis-data:
   vscode-data:
   vscode-cache:
+  zed-data:

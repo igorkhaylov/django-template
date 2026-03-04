@@ -1,0 +1,25 @@
+{
+  "languages": {
+    "Python": {
+      "language_servers": ["pyright", "ruff"],
+      "formatter": "language_server"
+    }
+  },
+  "lsp": {
+    "pyright": {
+      "settings": {
+        "python": {
+          "pythonPath": "/usr/local/bin/python3"
+        },
+        "basePath": "/app/backend"
+      }
+    },
+    "ruff": {
+      "initialization_options": {
+        "settings": {
+          "configuration": "/app/backend/pyproject.toml"
+        }
+      }
+    }
+  }
+}
