@@ -1,7 +1,5 @@
 FROM python:3.13-slim
 
-ARG DEV=false
-
 EXPOSE 8000
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -16,7 +14,6 @@ RUN apt-get update && apt-get install -y \
     gcc \
     curl \
     gettext \
-    $([ "$DEV" = "true" ] && echo "git openssh-client") \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -26,12 +23,6 @@ RUN pip install --no-cache-dir "poetry==$POETRY_VERSION" virtualenv --upgrade
 
 COPY ./backend/pyproject.toml ./backend/poetry.lock ./
 
-RUN if [ "$DEV" = "true" ]; then \
-        poetry install --no-root --with dev; \
-    else \
-        poetry install --no-root --only main; \
-    fi
+RUN poetry install --no-root --only main
 
 COPY ./backend/ .
-
-CMD ["sleep", "infinity"]
