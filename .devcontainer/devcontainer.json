@@ -1,0 +1,43 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/docker-existing-dockerfile
+{
+  "name": "Django Template 8050",
+  // "dockerComposeFile": "../docker-compose.yml",
+  "dockerComposeFile": ["../docker-compose.dev.yml"],
+  "service": "backend",
+  "workspaceFolder": "/app",
+  "mounts": [
+    "type=bind,source=${localEnv:HOME}/.claude,target=/root/.claude",
+    "type=bind,source=${localEnv:HOME}/.claude.json,target=/root/.claude.json",
+    "type=bind,source=${localEnv:HOME}/.gitconfig,target=/root/.gitconfig,readonly",
+  ],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "charliermarsh.ruff",
+        "batisteo.vscode-django",
+        "streetsidesoftware.code-spell-checker",
+        "streetsidesoftware.code-spell-checker-russian",
+        "albert.TabOut",
+        "Gruntfuggly.todo-tree",
+        "anthropic.claude-code",
+      ],
+      "settings": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "charliermarsh.ruff",
+        "[python]": {
+          "editor.defaultFormatter": "charliermarsh.ruff",
+          "editor.codeActionsOnSave": {
+            "source.organizeImports": "explicit",
+          },
+        },
+      },
+    },
+  },
+  "postCreateCommand": "pre-commit install || true",
+  "postStartCommand": "rm -rf /root/.ssh && cp -r /tmp/.host-ssh /root/.ssh && chown -R root:root /root/.ssh && chmod 700 /root/.ssh && find /root/.ssh -type f -exec chmod 600 {} + && chmod 644 /root/.ssh/*.pub 2>/dev/null",
+  "forwardPorts": [
+    // 8050
+  ],
+}

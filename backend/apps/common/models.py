@@ -5,6 +5,8 @@ from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
 
+from common.utils import Base62
+
 
 class UIDMixin(models.Model):
     """Adds a UUID field for external identification (public API, integrations)."""
@@ -81,3 +83,26 @@ class BaseModel(UIDMixin, TimestampMixin, RankMixin):
             return format_html('<a href="{}" target="_blank">{}</a>', url, self)
         url = reverse(f"admin:{app_label}_{model_name}_add")
         return format_html('<a href="{}" target="_blank">+</a>', url)
+
+    @property
+    def short_id(self) -> str:
+        """Возвращает id объекта в виде base62-строки."""
+        return Base62.encode(self.pk)
+
+    @classmethod
+    def get_by_short_id(cls, token: str):
+        """
+        Возвращает объект по base62-токен или None, если токен невалиден
+        либо объект не найден.
+
+        Пример::
+
+            news = News.get_by_short_id(token)
+            if news is None:
+                raise Http404
+        """
+        try:
+            pk = Base62.decode(token)
+        except (ValueError, TypeError):
+            return None
+        return cls._default_manager.filter(pk=pk).first()

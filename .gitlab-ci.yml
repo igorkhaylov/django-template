@@ -1,0 +1,97 @@
+variables:
+  IMAGE_NAME: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_SLUG}
+  SENTRY_RELEASE: ${CI_COMMIT_SHA}
+
+stages:
+  - test
+  - build
+  - deploy
+
+# ============ TEST STAGE ============
+test:
+  stage: test
+  tags:
+    - default
+  script:
+    - docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test
+  after_script:
+    - docker compose -f docker-compose.test.yml down -v
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "dev"
+    - if: $CI_COMMIT_BRANCH == "master"
+
+# ============ BUILD STAGE ============
+build:
+  stage: build
+  tags:
+    - default
+  needs:
+    - test
+  before_script:
+    - echo $CI_REGISTRY_PASSWORD | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
+  script:
+    - docker build --file .docker/backend/Dockerfile --build-arg SENTRY_RELEASE=$SENTRY_RELEASE --tag $IMAGE_NAME .
+    - docker push $IMAGE_NAME
+  after_script:
+    - docker logout $CI_REGISTRY
+  rules:
+    - if: $CI_COMMIT_BRANCH == "dev"
+    - if: $CI_COMMIT_BRANCH == "master"
+
+# ============ DEPLOY STAGE ============
+deploy-dev:
+  stage: deploy
+  tags:
+    - default
+  needs:
+    - build
+  environment:
+    name: development
+  before_script:
+    - mkdir -p ~/.ssh
+    - echo "$DEV_SSH_KEY" > ~/.ssh/deploy_key
+    - chmod 600 ~/.ssh/deploy_key
+    - ssh-keyscan -H $DEV_HOST >> ~/.ssh/known_hosts
+  script:
+    - |
+      ssh -i ~/.ssh/deploy_key -p ${DEV_PORT:-22} $DEV_USER@$DEV_HOST << EOF
+        cd $DEV_PATH
+        echo $CI_REGISTRY_PASSWORD | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
+        docker pull $IMAGE_NAME
+        docker compose down
+        docker compose up -d
+        docker image prune -f
+      EOF
+  after_script:
+    - rm -f ~/.ssh/deploy_key
+  rules:
+    - if: $CI_COMMIT_BRANCH == "dev"
+
+deploy-prod:
+  stage: deploy
+  tags:
+    - default
+  needs:
+    - build
+  environment:
+    name: production
+  before_script:
+    - mkdir -p ~/.ssh
+    - echo "$PROD_SSH_KEY" > ~/.ssh/deploy_key
+    - chmod 600 ~/.ssh/deploy_key
+    - ssh-keyscan -H $PROD_HOST >> ~/.ssh/known_hosts
+  script:
+    - |
+      ssh -i ~/.ssh/deploy_key -p ${PROD_PORT:-22} $PROD_USER@$PROD_HOST << EOF
+        cd $PROD_PATH
+        echo $CI_REGISTRY_PASSWORD | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
+        docker pull $IMAGE_NAME
+        docker compose down
+        docker compose up -d
+        docker image prune -f
+      EOF
+  after_script:
+    - rm -f ~/.ssh/deploy_key
+  rules:
+    - if: $CI_COMMIT_BRANCH == "master"

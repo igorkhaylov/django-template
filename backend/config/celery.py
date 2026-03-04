@@ -1,15 +1,13 @@
 """
-Docs Configuration
+Celery Configuration
 https://docs.celeryq.dev/en/latest/userguide/configuration.html
 """
 
 import os
 
-from celery import Celery, shared_task
-from celery.schedules import crontab
+from celery import Celery
 from django.conf import settings
 
-# Set the default Django settings module for the 'celery' program.
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 
 
@@ -18,59 +16,32 @@ REDIS_PORT = settings.REDIS_PORT
 
 app = Celery(settings.APP_NAME)
 
-# app.config_from_object("django.conf:settings", namespace="CELERY")
-
-# --- Настройки Celery (вместо settings.py) ---
-
-# --- Подключение broker + backend ---
+# Broker + result backend
 app.conf.broker_url = f"redis://{REDIS_HOST}:{REDIS_PORT}/0"
 app.conf.result_backend = f"redis://{REDIS_HOST}:{REDIS_PORT}/0"
 
-# --- Основные настройки ---
+# Core settings
 app.conf.timezone = settings.TIME_ZONE
 app.conf.task_track_started = True
-app.conf.task_soft_time_limit = 3 * 60 * 60  # предупреждение
-app.conf.task_time_limit = 3 * 60 * 60 + 60  # принудительное убийство через 60 секунд
+app.conf.task_soft_time_limit = 3 * 60 * 60  # soft limit (warning)
+app.conf.task_time_limit = 3 * 60 * 60 + 60  # hard limit (kill after 60s grace)
+app.conf.task_default_queue = "celery"
 
-app.conf.task_default_queue = "celery"  # Название очереди по умолчанию, если не задано
-
-# --- Форматы ---
+# Serialization
 app.conf.accept_content = ["application/json"]
 app.conf.task_serializer = "json"
 app.conf.result_accept_content = ["application/json"]
 app.conf.result_serializer = "json"
 
-
-# --- Broker reconnect options ---
+# Broker reconnect options
 app.conf.broker_connection_retry_on_startup = True
 app.conf.broker_connection_max_retries = None
 app.conf.broker_connection_retry = True
 app.conf.broker_connection_timeout = 4.0
 app.conf.broker_heartbeat = 10
 
-# --- Beat schedule file ---
+# Beat schedule file
 app.conf.beat_schedule_filename = "celerybeat-schedule"
 
-# --- Autodiscover ---
+# Autodiscover tasks from all installed apps
 app.autodiscover_tasks()
-
-
-# --- Example tasks ---
-# @shared_task
-# def say_hello():
-#     """Example task for say hello."""
-#     print("Hello from Celery!")
-
-
-# app.conf.beat_schedule = {
-#     "say_hello": {
-#         "task": "config.celery.say_hello",
-#         # "schedule": crontab(hour=3, minute=0),  # Every day at 3:00 AM
-#         "schedule": 10,  # Execute every 10 seconds
-#         "args": [],
-#         "kwargs": {},
-#         "options": {
-#             "queue": "celery",
-#         },
-#     },
-# }

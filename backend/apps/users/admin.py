@@ -66,7 +66,7 @@ class UserAdmin(AuthUserAdmin):
 
 
 class LogEntryUserFilter(admin.SimpleListFilter):
-    title = "Пользователь"
+    title = _("User")
     parameter_name = "logentry_user"
 
     def lookups(self, request, model_admin):

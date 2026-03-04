@@ -14,9 +14,6 @@ if not firebase_admin._apps:
     if firebase_json_path and Path(firebase_json_path).exists():
         cred = credentials.Certificate(firebase_json_path)
         firebase_admin.initialize_app(cred)
-        _logger.info("🔥 Firebase App 1 успешно инициализирован!")
+        _logger.info("Firebase app initialized successfully")
     else:
-        _logger.info("⚠️ Firebase App 1 JSON credentials не найдены!")
-
-# TODO func for convert all dict data to string, cause All keys and values in the dictionary must be strings.
-# TODO MulticastMessage.tokens must not contain more than 500 tokens, if more, split on several messages
+        _logger.info("Firebase JSON credentials not found, skipping initialization")
