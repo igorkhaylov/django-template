@@ -2,7 +2,9 @@
 x-backend-defaults: &backend-defaults
   build:
     context: .
-    dockerfile: ./Dockerfile.dev
+    dockerfile: ./Dockerfile
+    args:
+      DEV: "true"
   env_file:
     - ./.env
   volumes:
