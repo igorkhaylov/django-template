@@ -1,8 +1,13 @@
 repos:
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.8.0
+  - repo: local
     hooks:
-      - id: ruff
-        args: [--config, backend/pyproject.toml, --fix]
+      - id: ruff-check
+        name: ruff check
+        entry: ruff check --config backend/pyproject.toml --fix
+        language: system
+        types: [python]
       - id: ruff-format
-        args: [--config, backend/pyproject.toml]
+        name: ruff format
+        entry: ruff format --config backend/pyproject.toml
+        language: system
+        types: [python]

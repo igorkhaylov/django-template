@@ -12,9 +12,7 @@ x-backend-defaults: &backend-defaults
     - django-static:/app/static
     - vscode-data:/root/.vscode-server
     - vscode-cache:/root/.cache
-    - ${SSH_AUTH_SOCK:-/dev/null}:/tmp/ssh-agent.sock
-  environment:
-    - SSH_AUTH_SOCK=/tmp/ssh-agent.sock
+    - ~/.ssh:/tmp/.host-ssh:ro
   depends_on:
     db:
       condition: service_healthy

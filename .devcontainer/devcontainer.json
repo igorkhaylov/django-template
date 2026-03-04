@@ -38,6 +38,7 @@
     }
   },
   "postCreateCommand": "pre-commit install",
+  "postStartCommand": "rm -rf /root/.ssh && cp -r /tmp/.host-ssh /root/.ssh && chown -R root:root /root/.ssh && chmod 700 /root/.ssh && find /root/.ssh -type f -exec chmod 600 {} + && chmod 644 /root/.ssh/*.pub 2>/dev/null; ssh -T git@github.com 2>&1 || true",
   "forwardPorts": [
     // 8050
   ]
