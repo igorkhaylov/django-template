@@ -1,0 +1,23 @@
+include:
+  - docker-compose.yml
+
+services:
+  backend:
+    environment:
+      ENVIRONMENT: test
+    command: >
+      bash -c "
+        python manage.py migrate --no-input &&
+        pytest --tb=short -q
+      "
+    restart: "no"
+
+  # Disable services not needed for tests
+  backend-celery-worker-default:
+    profiles: [disabled]
+
+  backend-celery-beat:
+    profiles: [disabled]
+
+  nginx:
+    profiles: [disabled]
