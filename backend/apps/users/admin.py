@@ -104,7 +104,14 @@ class LogEntryAdmin(admin.ModelAdmin):
         "content_type",
     )
 
-    has_add_permission = lambda self, request: False
-    has_change_permission = lambda self, request, obj=None: False
-    has_delete_permission = lambda self, request, obj=None: False
-    # has_view_permission = lambda self, request, obj=None: request.user.is_superuser
+    def has_add_permission(self, request) -> bool:
+        return False
+
+    def has_change_permission(self, request, obj=None) -> bool:
+        return False
+
+    def has_delete_permission(self, request, obj=None) -> bool:
+        return False
+
+    # def has_view_permission(self, request, obj=None) -> bool:
+    #     return request.user.is_superuser

@@ -1,8 +1,9 @@
 import logging
 from pathlib import Path
 
-import firebase_admin
 from django.conf import settings
+
+import firebase_admin
 from firebase_admin import credentials
 
 _logger = logging.getLogger(__name__)
