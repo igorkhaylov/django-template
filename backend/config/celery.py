@@ -5,8 +5,9 @@ https://docs.celeryq.dev/en/latest/userguide/configuration.html
 
 import os
 
-from celery import Celery
 from django.conf import settings
+
+from celery import Celery
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 
@@ -41,7 +42,7 @@ app.conf.broker_connection_timeout = 4.0
 app.conf.broker_heartbeat = 10
 
 # Beat schedule file
-app.conf.beat_schedule_filename = "celerybeat-schedule"
+app.conf.beat_schedule_filename = "/tmp/celerybeat-schedule"
 
 # Autodiscover tasks from all installed apps
 app.autodiscover_tasks()

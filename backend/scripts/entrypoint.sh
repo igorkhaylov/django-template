@@ -13,4 +13,4 @@ echo ">>> Create Superuser..."
 python manage.py createsuperuserauto
 
 echo ">>> Starting server..."
-gunicorn config.wsgi:application --name ${DJANGO_APP_NAME} --workers ${GUNICORN_WORKERS:-4} --bind 0.0.0.0:8000
+gunicorn config.wsgi:application --name ${DJANGO_APP_NAME} --workers ${GUNICORN_WORKERS:-4} --bind 0.0.0.0:8000 --access-logfile -

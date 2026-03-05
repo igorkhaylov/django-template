@@ -6,6 +6,9 @@ set -a
 source "$(dirname "$0")/../.env"
 set +a
 
+
+MINIO_ROOT_USER="${MINIO_ROOT_USER:-minioadmin}"
+MINIO_ROOT_PASSWORD="${MINIO_ROOT_PASSWORD:-minioadmin}"
 MINIO_PORT="${MINIO_PORT:-9000}"
 
 docker run --rm --network host \

@@ -2,9 +2,10 @@ import os
 import sys
 from pathlib import Path
 
+from django.utils.translation import gettext_lazy as _
+
 from corsheaders.defaults import default_headers, default_methods
 from decouple import config
-from django.utils.translation import gettext_lazy as _
 
 # =============================================================================
 # Paths

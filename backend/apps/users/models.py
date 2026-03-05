@@ -1,17 +1,18 @@
 import logging
 import uuid
 
-from common.generators import generate_random_username
-from common.models import BaseModel
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.contrib.auth.models import PermissionsMixin
 from django.contrib.auth.validators import ASCIIUsernameValidator
-from django.core.exceptions import ValidationError
 from django.core.validators import EmailValidator, MinLengthValidator
 from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
+
 from stdimage.models import StdImageField
+
+from common.generators import generate_random_username
+from common.models import UIDMixin
 
 logger = logging.getLogger(__name__)
 
@@ -59,12 +60,10 @@ class CustomUserManager(BaseUserManager):
         return self.get(username=username_or_email)
 
 
-class User(AbstractBaseUser, PermissionsMixin):
+class User(UIDMixin, AbstractBaseUser, PermissionsMixin):
     class GenderChoices(models.TextChoices):
         male = ("M", _("Male"))
         female = ("F", _("Female"))
-
-    uid = models.UUIDField(default=uuid.uuid4, editable=False)
 
     username = models.CharField(
         _("Username"),
@@ -104,7 +103,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     USERNAME_FIELD = "username"
 
     def __str__(self) -> str:
-        return f"{self.username} {self.name}".strip() or "Unnamed User"
+        if self.name:
+            return f"{self.username} ({self.name})"
+        return self.username
 
     class Meta:
         verbose_name = _("User")
@@ -148,16 +149,6 @@ class UserEmail(models.Model):
                 name="unique_verified_email",
             ),
         ]
-
-    def clean(self):
-        super().clean()
-        if self.is_verified:
-            if UserEmail.objects.filter(email=self.email, is_verified=True).exclude(user=self.user).exists():
-                raise ValidationError(_("This email is already verified by another user."))
-
-    def save(self, *args, **kwargs):
-        self.full_clean()
-        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.email} ({'verified' if self.is_verified else 'unverified'})"
