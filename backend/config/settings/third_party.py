@@ -48,26 +48,30 @@ _minio_endpoint = config("DJANGO_MINIO_ENDPOINT")  # Internal Docker address
 
 _protocol, _domain = config("DJANGO_MINIO_CUSTOM_URL", default="http://localhost:9000").split("://")
 
+_s3_options = {
+    "access_key": _minio_access_key,
+    "secret_key": _minio_secret_key,
+    "bucket_name": _minio_bucket,
+    "endpoint_url": _minio_endpoint,
+    "region_name": "us-east-1",
+    "querystring_auth": False,  # Public bucket: URLs don't expire
+    "addressing_style": "path",  # Required for MinIO
+    "url_protocol": f"{_protocol}:",
+    "custom_domain": f"{_domain}/{_minio_bucket}",
+    "file_overwrite": False,
+}
+
 STORAGES = {
     "default": {
         "BACKEND": "storages.backends.s3.S3Storage",
-        "OPTIONS": {
-            "access_key": _minio_access_key,
-            "secret_key": _minio_secret_key,
-            "bucket_name": _minio_bucket,
-            "endpoint_url": _minio_endpoint,
-            "region_name": "us-east-1",
-            "querystring_auth": False,  # Public bucket: URLs don't expire
-            "addressing_style": "path",  # Required for MinIO
-            "url_protocol": f"{_protocol}:",
-            "custom_domain": f"{_domain}/{_minio_bucket}",
-            "file_overwrite": False,
-        },
+        "OPTIONS": _s3_options,
     },
     "staticfiles": {
-        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        "BACKEND": "storages.backends.s3.S3Storage",
+        "OPTIONS": {**_s3_options, "location": "static", "file_overwrite": True},
     },
 }
+
 
 # =============================================================================
 # Rosetta (translation UI)

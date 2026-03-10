@@ -7,7 +7,6 @@ x-backend-defaults: &backend-defaults
     - ./.env
   volumes:
     - .:/app
-    - django-static:/app/static
     - vscode-data:/root/.vscode-server
     - vscode-cache:/root/.cache
     - zed-data:/root/.local/share/zed
@@ -63,9 +62,8 @@ services:
     image: nginx:stable-alpine
     volumes:
       - ./nginx/nginx.dev.conf:/etc/nginx/nginx.conf:ro
-      - django-static:/app/static:ro
     ports:
-      - "8050:80"
+      - "${APP_PORT:-8050}:80"
     depends_on:
       backend:
         condition: service_started
@@ -73,7 +71,6 @@ services:
 
 
 volumes:
-  django-static:
   postgres-data:
   redis-data:
   vscode-data:
