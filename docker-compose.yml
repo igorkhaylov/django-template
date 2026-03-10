@@ -7,8 +7,6 @@ x-backend-defaults: &backend-defaults
     dockerfile: ./Dockerfile
   env_file:
     - ./.env
-  volumes:
-    - django-static:/app/static
   depends_on:
     db:
       condition: service_healthy
@@ -79,7 +77,6 @@ services:
       - "${APP_PORT:-8050}:80"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - django-static:/app/static:ro
     depends_on:
       backend:
         condition: service_healthy
@@ -89,4 +86,3 @@ services:
 volumes:
   postgres-data:
   redis-data:
-  django-static:
