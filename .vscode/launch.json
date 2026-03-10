@@ -5,7 +5,7 @@
       "name": "Runserver",
       "type": "debugpy",
       "request": "launch",
-      "program": "${workspaceFolder}/manage.py",
+      "program": "${workspaceFolder}/backend/manage.py",
       "args": [
         "runserver",
         "0.0.0.0:8000"
