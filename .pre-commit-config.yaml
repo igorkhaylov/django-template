@@ -6,8 +6,10 @@ repos:
         entry: ruff check --config backend/pyproject.toml --fix
         language: system
         types: [python]
+        exclude: migrations/
       - id: ruff-format
         name: ruff format
         entry: ruff format --config backend/pyproject.toml
         language: system
         types: [python]
+        exclude: migrations/
