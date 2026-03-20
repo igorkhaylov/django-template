@@ -19,7 +19,9 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-RUN pip install --no-cache-dir "poetry==$POETRY_VERSION" virtualenv --upgrade
+RUN pip install --no-cache-dir "poetry==$POETRY_VERSION"
+
+RUN pip install --upgrade virtualenv
 
 COPY ./backend/pyproject.toml ./backend/poetry.lock ./
 
