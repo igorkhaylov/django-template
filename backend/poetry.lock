@@ -725,8 +725,8 @@ test = ["pytest", "pytest-cov", "pytest-django"]
 [package.source]
 type = "git"
 url = "https://github.com/igorkhaylov/django-stdimage.git"
-reference = "v1.0.1"
-resolved_reference = "e7ef369f2406c8588a29abcc1d16d9d2f877abf7"
+reference = "v1.0.2"
+resolved_reference = "6e0218046a33c1d3bf2ff9d577b2efb66c9d93cf"
 
 [[package]]
 name = "django-storages"
@@ -2607,4 +2607,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.13,<4"
-content-hash = "9117940c5df4fc4f99aa2b610563554c82e5cf498bbc43d2ff7243ded462d2b8"
+content-hash = "2909180bfb9b24ca5706d04198d7b3219c2196208784e150ecbcf2ff7b69012e"
