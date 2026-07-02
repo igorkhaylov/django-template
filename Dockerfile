@@ -12,9 +12,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     UV_PROJECT_ENVIRONMENT=/opt/venv
 
 # build-essential/gcc/libpq-dev for any source builds; git for the django-stdimage
-# git dependency.
+# git dependency; gettext (msgfmt) because django-stdimage compiles .po -> .mo in its
+# build backend and the source build fails without it.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential python3-dev libpq-dev gcc git \
+    build-essential python3-dev libpq-dev gcc git gettext \
     && rm -rf /var/lib/apt/lists/*
 
 RUN pip install --no-cache-dir uv
