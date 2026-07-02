@@ -1,201 +1,228 @@
 # Django Template
 
-Production-ready Django REST Framework template with PostgreSQL, Redis, Celery, MinIO (S3-compatible storage), and Nginx — fully containerized with Docker Compose.
+Production-oriented Django + DRF starter: PostgreSQL, Redis, Celery, MinIO (S3-compatible
+storage) and Nginx, fully containerized with Docker Compose and managed with **uv**.
 
 ## Tech Stack
 
-- **Python 3.13** / **Django 5.2** / **DRF**
+- **Python 3.13** / **Django 5.2** / **Django REST Framework**
 - **PostgreSQL 17.4** — primary database
-- **Redis 8** — Celery broker and cache
-- **Celery** — async task queue with beat scheduler
-- **MinIO** — S3-compatible object storage for media files
-- **Nginx** — reverse proxy and static file serving
-- **Poetry 2.1.3** — dependency management
-- **Ruff** — linter and formatter
-- **pre-commit** — git hooks for code quality
+- **Redis 8** — Celery broker + Django cache
+- **Celery** (+ beat) — async tasks
+- **MinIO** — S3-compatible object storage for **static and media** files
+- **Nginx** — in-stack reverse proxy to Gunicorn
+- **uv** — dependency management & virtualenvs
+- **Ruff** — lint + format · **pre-commit** — git hooks
+- **structlog** (django-structlog) — structured logging to stdout
 
 ## Project Structure
 
 ```
 ├── backend/
 │   ├── apps/
-│   │   ├── common/          # Shared models, utilities, validators
-│   │   └── users/           # User model and authentication
+│   │   ├── common/          # Shared abstract models, utils, validators
+│   │   └── users/           # Custom User + UserEmail, auth manager
 │   ├── config/
-│   │   ├── settings/        # Split settings (base, dev, third_party)
-│   │   ├── urls.py
-│   │   ├── celery.py
-│   │   └── wsgi.py / asgi.py
+│   │   ├── settings/        # base.py, third_party.py, dev.py, test.py
+│   │   ├── urls.py · celery.py · wsgi.py · asgi.py
 │   ├── scripts/             # Container entrypoints
-│   ├── templates/
+│   ├── tests/               # pytest suite (minimal-config, no external services)
 │   └── pyproject.toml
-├── minio/                   # MinIO init script and access policies
-├── nginx/                   # Nginx configs (prod and dev)
-├── scripts/                 # Host-level utility scripts
-├── .devcontainer/           # VS Code devcontainer config
-├── docker-compose.yml       # Production
-├── docker-compose.dev.yml   # Development
-├── Dockerfile               # Production image
-├── Dockerfile.dev           # Development image
+├── docs/                    # uv.md, stdimage.md
+├── minio/                   # MinIO access policies (used by scripts/ensure_minio.sh)
+├── nginx/                   # nginx.conf (prod) / nginx.dev.conf
+├── scripts/                 # Host-level helpers: ensure_minio.sh, dump/restore
+├── docker-compose.yml       # Local production-like (builds from source)
+├── docker-compose.dev.yml   # Development (repo bind-mounted)
+├── docker-compose.prod.yml  # Production deploy (pulls the registry image)
+├── docker-compose.test.yml  # Test runner
+├── Dockerfile / Dockerfile.dev
 └── Makefile
 ```
 
-## Getting Started
+## Deployment topology (read this first)
 
-### 1. Clone and configure environment
+This app **always runs behind an external reverse proxy** (the edge). That edge:
+
+- terminates **TLS** and holds the certificates, and
+- sets `X-Forwarded-Proto` (and the real client IP in `X-Forwarded-For`).
+
+Django trusts `X-Forwarded-Proto` via `SECURE_PROXY_SSL_HEADER`, so proxied HTTPS
+requests are correctly treated as secure. **The in-stack `nginx` must NOT re-set
+`X-Forwarded-Proto`** — that line is intentionally left commented in
+[`nginx/nginx.conf`](nginx/nginx.conf); re-setting it would overwrite the edge proxy's
+value.
+
+> **Client-IP trust requirement.** `common.request.get_ip_from_request` uses the **first**
+> `X-Forwarded-For` entry. This is only safe if the **edge proxy sets the real client IP as
+> the first hop and rejects any client-supplied `X-Forwarded-For`** (otherwise a client can
+> spoof its IP). Downstream proxies must only *append* to the header, never reorder. If you
+> run this without such an edge proxy, do not trust `X-Forwarded-For`.
+
+Static and media are served by **S3/MinIO**, not by Nginx.
+
+## First-time setup
+
+### 1. Configure environment
 
 ```bash
 cp .env.example .env
-# Edit .env — change all CHANGE_ME values
-# Generate a secret key: openssl rand -hex 64
+# Edit .env — change every CHANGE_ME. In stage/prod, DJANGO_SECRET_KEY must be a
+# strong, explicit value (>= 50 chars): openssl rand -hex 64
 ```
 
-### 2. Start services
+`ENVIRONMENT` must be one of `dev | test | stage | prod` (validated at startup —
+an unrecognized value raises instead of silently running insecurely). `DEBUG` and all
+security flags are derived from it.
 
-**Production:**
-```bash
-make up
-```
+### 2. Create the initial migrations (important)
 
-**Development (with devcontainer):**
-Open the project in VS Code and use "Reopen in Container". The devcontainer will:
-- Start all services via `docker-compose.dev.yml`
-- Install pre-commit hooks automatically
-- Mount your SSH keys for git operations
-
-**Development (without devcontainer):**
-```bash
-make dev up
-make dev bash          # enter the backend container
-pre-commit install     # set up git hooks
-python manage.py runserver 0.0.0.0:8000
-```
-
-### 3. Create a new app
+This template **ships without user migrations on purpose**. The default `User`/`UserEmail`
+models are a starting point — adjust them to your project *first*, then generate the
+initial migration so you don't accumulate throwaway migrations later.
 
 ```bash
-cd apps
-python ../manage.py startapp my_app
+make dev up                 # start the dev stack
+make dev makemigrations     # generate migrations for your (adjusted) models
+make dev migrate            # apply them
 ```
 
-Then add `"apps.my_app"` to `INSTALLED_APPS` in `config/settings/base.py`.
+> If you skip this, `migrate` has nothing to create and the app can't store users.
+
+> **`User.is_active` defaults to `False`.** Only superusers are active out of the box, so
+> a newly created regular user **cannot log in** until something sets `is_active=True`
+> (the intended trigger is OTP/email verification — a documented `TODO` in
+> [`users/models.py`](backend/apps/users/models.py)). Create your admin with
+> `make dev createsuperuser`; decide your activation flow before shipping user signup.
+
+### 3. Provision object storage (manual, one-off)
+
+Object storage is **not** part of the compose stack. Locally it's a single **shared**
+MinIO container on your host, reused by every project (no per-project MinIO):
+
+```bash
+make minio          # ./scripts/ensure_minio.sh
+```
+
+This script:
+- starts the shared MinIO container (`minio`) if it isn't already running — otherwise
+  reuses the existing one, so all your projects share one MinIO;
+- creates **this project's** bucket, public-read policy and restricted app user;
+- **does nothing** if the project is configured for external/managed storage (i.e. you
+  changed `MINIO_ROOT_USER`/`MINIO_ROOT_PASSWORD` away from the `minioadmin` defaults) —
+  in that case provision the bucket on your provider instead.
+
+The backend reaches it via `DJANGO_MINIO_ENDPOINT` (default
+`http://host.docker.internal:9000` — the host-published shared MinIO). Admin
+credentials default to `minioadmin` / `minioadmin`.
+
+### 4. Run the dev server
+
+`make dev up` brings the stack online, but the backend container just **idles**
+(`sleep infinity`) so you can run migrations/shell/tests against a live DB. Start the
+Django dev server (autoreload) explicitly:
+
+```bash
+make dev run                # runserver on 0.0.0.0:8000 → open http://localhost:$APP_PORT
+```
+
+`make dev run` runs in the foreground; Ctrl-C stops the server while the rest of the stack
+keeps running. (There is no need to `make dev run` for `make up` / prod — those serve via
+Gunicorn from the entrypoint.)
+
+Other everyday commands:
+
+```bash
+make dev bash               # shell into the backend container
+make dev test               # run the test suite
+make dev logs backend       # tail logs
+```
+
+## Production
+
+Production uses a **registry image, not a server-side build**: CI builds the backend
+image and pushes it to a container registry; the server only **pulls** it.
+
+```bash
+# On the server (needs: docker-compose.prod.yml + ./.env + ./nginx/nginx.conf):
+make prod deploy   # = docker compose -f docker-compose.prod.yml pull && up -d
+```
+
+`docker-compose.prod.yml` runs `image: ${BACKEND_IMAGE}` (no `build:`). Set `BACKEND_IMAGE`
+in `.env` — pin a reproducible build by sha, e.g.
+`ghcr.io/igorkhaylov/django-template:sha-<full-sha>` (a moving `:latest` also works but
+drifts on the next push).
+
+For a purely local production-like run that builds from source, `make up` still works
+(uses `docker-compose.yml`).
+
+Point `DJANGO_MINIO_*` at your managed MinIO / S3 (the `make minio` shared-local helper
+is for development). Behind your edge reverse proxy, point it at the `nginx` service
+(host port `APP_PORT`, default 8050).
+
+## Dependency management (uv)
+
+Dependencies live in `backend/pyproject.toml`; the lockfile is `backend/uv.lock`.
+See [docs/uv.md](docs/uv.md) for the full command reference. Quick version:
+
+```bash
+cd backend
+uv lock                     # generate/refresh uv.lock  (REQUIRED before first build)
+uv sync                     # install into .venv (incl. dev group)
+uv add <package>            # add a runtime dependency
+uv add --dev <package>      # add a dev dependency
+```
+
+> The Docker images install from `uv.lock` with `uv sync --frozen`, so you must commit a
+> lockfile. Generate it once with `cd backend && uv lock`.
 
 ## Environment Variables
 
-Copy `.env.example` to `.env` and configure. Key variables:
-
 | Variable | Default | Description |
 |---|---|---|
-| `ENVIRONMENT` | `prod` | `dev`, `test`, `stage`, or `prod` |
-| `DJANGO_SECRET_KEY` | — | **Required.** Generate with `openssl rand -hex 64` |
-| `DJANGO_ALLOWED_HOSTS` | `""` | Comma-separated allowed hosts |
-| `DJANGO_CSRF_TRUSTED_ORIGINS` | `""` | Comma-separated CSRF trusted origins |
-| `DJANGO_CORS_ALLOWED_ORIGINS` | `""` | Comma-separated CORS allowed origins |
-| `DJANGO_SUPERUSER_USERNAME` | — | Auto-created superuser username |
-| `DJANGO_SUPERUSER_PASSWORD` | — | Auto-created superuser password |
-| `POSTGRES_DB` | — | **Required.** Database name |
-| `POSTGRES_USER` | — | **Required.** Database user |
-| `POSTGRES_PASSWORD` | — | **Required.** Database password |
-| `POSTGRES_HOST` | `db` | Database host |
-| `POSTGRES_PORT` | `5432` | Database port |
-| `GUNICORN_WORKERS` | `4` | Number of Gunicorn workers |
+| `ENVIRONMENT` | `prod` | `dev` / `test` / `stage` / `prod` (validated) |
+| `PROJECT_NAME` | `django-template` | Compose project name; dev/test append `-dev`/`-test` |
+| `APP_PORT` | `8050` | Host port for the in-stack nginx |
+| `DJANGO_SECRET_KEY` | dev-only default | **Required, ≥50 chars in stage/prod** |
+| `DJANGO_ALLOWED_HOSTS` | `""` | Comma-separated |
+| `DJANGO_CSRF_TRUSTED_ORIGINS` | `""` | Comma-separated |
+| `DJANGO_CORS_ALLOWED_ORIGINS` | `""` | Comma-separated |
+| `DJANGO_LOG_LEVEL` | `INFO` | `DEBUG`/`INFO`/`WARNING`/`ERROR` |
+| `GUNICORN_WORKERS` | `4` | Gunicorn worker count |
+| `GUNICORN_TIMEOUT` | `60` | Worker request timeout (s) |
+| `POSTGRES_*` | see `.env.example` | Database connection |
+| `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD` | `minioadmin` | Shared local MinIO admin; non-default ⇒ external storage, `make minio` skips |
+| `MINIO_BUCKET_NAME` / `MINIO_APP_USER` / `MINIO_APP_PASSWORD` | — | This project's bucket/user, created by `make minio` |
+| `DJANGO_MINIO_ENDPOINT` | `http://host.docker.internal:9000` | Endpoint the backend uses (shared host MinIO, or your S3) |
+| `DJANGO_MINIO_CUSTOM_URL` | `http://localhost:9000` | Public base URL for media/static |
 
-### MinIO Variables
+All `DJANGO_MINIO_*` values have safe defaults so management commands, tests and CI can
+import settings without a full MinIO environment.
 
-MinIO uses two layers of configuration:
+## Logging
 
-- `MINIO_*` — configure the MinIO container and setup scripts directly
-- `DJANGO_MINIO_*` — configure Django's S3 storage backend (read by `python-decouple`)
+Structured logging via `django-structlog` goes to the **container's stdout** (no files).
+Dev (`ENVIRONMENT=dev`) uses a colorized console renderer; stage/prod emit one JSON object
+per line. The level is controlled by `DJANGO_LOG_LEVEL`. Every line carries a `request_id`
+and `user_id` (via `RequestMiddleware`).
 
-| Variable | Default | Description |
-|---|---|---|
-| `MINIO_ENDPOINT` | — | Public MinIO URL (e.g. `http://localhost:9050`) |
-| `MINIO_ROOT_USER` | `minioadmin` | MinIO admin user |
-| `MINIO_ROOT_PASSWORD` | — | MinIO admin password |
-| `MINIO_BUCKET_NAME` | — | Bucket name for media files |
-| `MINIO_APP_USER` | — | App-level MinIO user (limited permissions) |
-| `MINIO_APP_PASSWORD` | — | App-level MinIO password |
-| `DJANGO_MINIO_ENDPOINT` | — | Internal MinIO URL for container-to-container communication (`http://minio:9000`) |
-| `DJANGO_MINIO_CUSTOM_URL` | `http://localhost:9000` | Public URL used in generated media file URLs |
+## Testing
 
-## MinIO Setup
-
-MinIO provides S3-compatible object storage for media files.
-
-**In Docker Compose (production):** The `minio-init` service in `docker-compose.yml` runs automatically on `make up`. It creates the bucket, sets up a public-read policy, creates an app-level user with restricted permissions, and applies the access policy.
-
-**Standalone (local development without compose):** Use the helper scripts:
+The suite runs in a **minimal configuration** (`config.settings.test`): sqlite in-memory,
+locmem cache/email, eager Celery, in-memory storage — **no Postgres/Redis/MinIO required**.
+pytest is configured with `--no-migrations`, so it works even before you create your
+initial migrations.
 
 ```bash
-# Start a standalone MinIO container (creates volume, exposes ports 9000/9001)
-./scripts/ensure_minio.sh
-
-# Create bucket, set policies, and create app user (reads credentials from .env)
-./scripts/ensure_minio_bucket.sh
+make dev test               # in the dev container
+# or, with deps installed on the host:
+cd backend && uv run pytest
 ```
-
-The bucket is configured with:
-- **Public read** — anonymous `GetObject` access (media files are publicly accessible)
-- **App user policy** — `ListBucket`, `PutObject`, `GetObject`, `DeleteObject` and multipart upload operations
-
-## Makefile
-
-All commands support a `dev` prefix to target `docker-compose.dev.yml`:
-
-```bash
-make up              # production
-make dev up          # development
-make dev logs backend
-```
-
-| Command | Description |
-|---|---|
-| `make up` | Build and start all containers |
-| `make down` | Stop containers |
-| `make down-v` | Stop containers and remove volumes |
-| `make build` | Build images |
-| `make logs [service]` | Tail container logs |
-| `make shell` | Django shell |
-| `make dbshell` | PostgreSQL shell |
-| `make migrate` | Run database migrations |
-| `make makemigrations` | Generate migration files |
-| `make collectstatic` | Collect static files |
-| `make createsuperuser` | Create Django superuser |
-| `make test` | Run pytest |
-| `make lint` | Run ruff check |
-| `make format` | Run ruff format |
-| `make pre-commit-install` | Install pre-commit git hooks |
-| `make bash` | Shell into backend container |
-| `make bash-db` | Shell into database container |
-| `make bash-nginx` | Shell into nginx container |
-| `make flush-redis` | Flush all Redis data |
-| `make dump` | Full backup (database + media) |
-| `make restore` | Print restore usage |
-
-## Backup and Restore
-
-**Backup** creates a timestamped directory with a PostgreSQL dump and media archive:
-
-```bash
-make dump
-# or
-./scripts/dump_all.sh
-# Output: dumps/<timestamp>/backup.sql + media_backup.tar.gz
-```
-
-**Restore** from a backup directory:
-
-```bash
-./scripts/restore_all.sh dumps/<timestamp>
-```
-
-This will stop services, drop and recreate the database, restore the SQL dump, restore media files, and restart everything.
 
 ## Code Quality
 
-**Ruff** is configured in `backend/pyproject.toml` with rules: `E`, `F`, `I`, `UP`, `B` (pycodestyle, pyflakes, isort, pyupgrade, bugbear).
-
-**pre-commit** runs ruff check (with auto-fix) and ruff format on every commit. Hooks are installed automatically in the devcontainer, or manually:
+Ruff is configured in `backend/pyproject.toml` with `E, F, I, UP, B, C4, SIM, DJ, RUF`.
+pre-commit runs ruff (check, no auto-fix) and ruff format on every commit:
 
 ```bash
 pre-commit install
@@ -203,41 +230,82 @@ pre-commit install
 
 ## Internationalization
 
-The project supports English and Russian (`ru` is the default translation language). Uses `django-modeltranslation` for model field translations and `django-rosetta` for a web-based translation UI.
+English (`en`, default) and Russian (`ru`) via `django-modeltranslation`; `django-rosetta`
+provides a web translation UI.
 
 ```bash
-# Generate locale files
-python manage.py makemessages -l ru -l en --ignore venv
-
-# Compile locale files
-python manage.py compilemessages
-
-# Populate translation fields (if model field *_ru doesn't exist yet)
-python manage.py update_translation_fields
+make dev makemessages       # extract strings
+make dev compilemessages    # compile .mo files
 ```
 
-## Adapting This Template
+## Object storage (django-stdimage)
 
-When creating a new project from this template, update:
+`User.picture` uses `StdImageField` from a maintained fork that ships default image
+variations. See [docs/stdimage.md](docs/stdimage.md) for how to declare and use variations.
 
-1. **`docker-compose.yml`** — change the compose project name and nginx port
-2. **`.env`** — change all `CHANGE_ME` values, update ports in `MINIO_ENDPOINT` and `DJANGO_CSRF_TRUSTED_ORIGINS`
-3. **`.devcontainer/devcontainer.json`** — change the name and forwarded ports
+## Backup & Restore
+
+A backup is a timestamped directory under `dumps/` with a gzipped `pg_dump`, a
+`manifest.json`, and — optionally — a tarball of all S3/MinIO media.
+
+```bash
+make dump                  # database + manifest only
+make dump media            # database + all S3/MinIO media (slower; downloads the bucket)
+make dev dump media        # same, dev stack
+
+make restore dumps/<ts>    # restore DB + media, and rewrite embedded media URLs
+make dev restore dumps/<ts>
+```
+
+| File | Contents |
+|------|----------|
+| `database.sql.gz` | full `pg_dump --clean --if-exists` |
+| `manifest.json`   | `media_base_url`, object count, total bytes |
+| `media.tar.gz`    | every S3/MinIO object except `static/` (only with the `media` arg) |
+
+Media lives in object storage, so it is dumped/loaded **through the app**
+(`media_dump` / `media_load` management commands), not from a local directory. A
+restore into a **different** S3/MinIO works: it rewrites the absolute media URLs
+embedded in HTML/text fields from the backup's `media_base_url` to the current one.
+See [docs/backup.md](docs/backup.md) for the full design.
+
+## Adapting this template
+
+1. **Adjust the `users` models** to your needs, then create the initial migration (step 2 above).
+2. `docker-compose.yml` / `.env` — set the compose name, ports and all `CHANGE_ME` values.
+3. Point your edge reverse proxy at the `nginx` service.
 
 ## CI/CD
 
-### GitHub Actions (`.github/workflows/cicd.yml`)
+Both platforms follow the same model: **build & push the backend image to a registry,
+then deploy by pulling it** (the server never builds).
 
-Deploys via Docker Compose on self-hosted runners. Triggered manually with environment selection (`prod`/`dev`). Before deploying, it runs a full backup via `dump_all.sh`.
+**GitHub Actions**
+- `.github/workflows/build-push.yml` — on push to `master` and on `v*` tags (or manual):
+  builds `./Dockerfile` and pushes to **GHCR** (`ghcr.io/<owner>/<repo>`) with tags
+  `latest` (default branch), `sha-<full-sha>` (every build), and `vX.Y.Z`/`X.Y.Z` (tags).
+  Uses Buildx + GitHub Actions cache. No secrets needed beyond the built-in `GITHUB_TOKEN`
+  (job has `packages: write`).
+- `.github/workflows/deploy.yml` — runs automatically after a successful build on `master`
+  (deploys the exact `sha-<full-sha>` just built), or manually with a chosen tag. A
+  GitHub-hosted runner **SSHes into the server**; the server logs in to GHCR, runs
+  `git reset --hard` to the deployed commit (syncs compose + `nginx/nginx.conf`), then
+  `docker compose -f docker-compose.prod.yml pull && up -d`. Uses GitHub **Environments**
+  (`prod`/`dev`). Required secrets per environment: `SSH_HOST` / `SSH_USER` / `SSH_PORT` /
+  `SSH_KEY` / `SSH_FINGERPRINT` / `DEPLOY_PATH` / `GHCR_USER` / `GHCR_PAT` (PAT with
+  `read:packages` only). The server keeps its own `./.env` (provisioned out-of-band; CI
+  never touches it — an opt-in snippet to let CI write it is in the workflow).
 
-Requires GitHub secrets: `PROD_ENV` / `DEV_ENV` (full `.env` file contents).
+**GitLab CI** (`.gitlab-ci.yml`) — `test → build → deploy`:
+- **test** runs `docker-compose.test.yml` (the gate).
+- **build** pushes to the GitLab Container Registry with the same tag set
+  (`sha-<sha>`, `latest` on the default branch, `vX.Y.Z`/`X.Y.Z` on tags).
+- **deploy-dev**/**deploy-prod** SSH to the server and pull the pinned `sha-<sha>` image
+  via `docker-compose.prod.yml`. The server authenticates with a **Deploy Token**
+  (`CI_DEPLOY_USER`/`CI_DEPLOY_PASSWORD`, scope `read_registry`) so restarts/`pull_policy:
+  always` keep working. Required CI vars: `DEV_SSH_KEY`/`DEV_HOST`/`DEV_PORT`/`DEV_USER`/
+  `DEV_PATH` (+ `PROD_*`).
 
-### GitLab CI (`.gitlab-ci.yml`)
+A `git tag vX.Y.Z` push runs test → build and pushes the semver image (no auto-deploy).
 
-Three-stage pipeline: **test** → **build** → **deploy**.
-
-- **test** — runs `docker-compose.test.yml`
-- **build** — builds and pushes image to GitLab Container Registry
-- **deploy** — SSHes into the target server, pulls the image, and restarts services
-
-Requires CI variables: `DEV_SSH_KEY`, `DEV_HOST`, `DEV_PORT`, `DEV_USER`, `DEV_PATH` (and `PROD_*` equivalents).
+> Keep only the platform you use; both are provided as a starting point.

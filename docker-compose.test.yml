@@ -1,23 +1,17 @@
-include:
-  - docker-compose.yml
+name: ${PROJECT_NAME:-django-template}-test
 
+# Runs the test suite in the minimal configuration (config.settings.test): sqlite
+# in-memory, locmem cache/email, eager Celery, in-memory storage. No db/redis/minio
+# services are needed, so this file is standalone (it does not include the prod stack).
 services:
   backend:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+      # Include the dev dependency group so pytest is available in the image.
+      args:
+        INSTALL_DEV: "true"
     environment:
       ENVIRONMENT: test
-    command: >
-      bash -c "
-        python manage.py migrate --no-input &&
-        pytest --tb=short -q
-      "
+    command: pytest --tb=short -q
     restart: "no"
-
-  # Disable services not needed for tests
-  backend-celery-worker-default:
-    profiles: [disabled]
-
-  backend-celery-beat:
-    profiles: [disabled]
-
-  nginx:
-    profiles: [disabled]

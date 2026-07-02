@@ -1,11 +1,9 @@
-import json
-import logging
-from datetime import datetime
-from zoneinfo import ZoneInfo
+from urllib.parse import urlsplit
 
+import structlog
 from decouple import config
 
-from .base import APP_NAME, BASE_DIR, TIME_ZONE
+from .base import APP_NAME, DEBUG
 
 # =============================================================================
 # Django REST Framework
@@ -40,13 +38,21 @@ SPECTACULAR_SETTINGS = {
 # =============================================================================
 # Storage (S3 / MinIO)
 # =============================================================================
+# All values have safe defaults so management commands, tests and CI can import
+# settings without a full MinIO environment. Override them in .env for real use.
+# Static and media are served by S3/MinIO (NOT by nginx).
 
-_minio_access_key = config("DJANGO_MINIO_ACCESS_KEY")
-_minio_secret_key = config("DJANGO_MINIO_SECRET_KEY")
-_minio_bucket = config("DJANGO_MINIO_BUCKET_NAME")
-_minio_endpoint = config("DJANGO_MINIO_ENDPOINT")  # Internal Docker address
+_minio_access_key = config("DJANGO_MINIO_ACCESS_KEY", default="minioadmin")
+_minio_secret_key = config("DJANGO_MINIO_SECRET_KEY", default="minioadmin")
+_minio_bucket = config("DJANGO_MINIO_BUCKET_NAME", default="app-bucket")
+_minio_endpoint = config("DJANGO_MINIO_ENDPOINT", default="http://host.docker.internal:9000")  # shared host MinIO / S3
 
-_protocol, _domain = config("DJANGO_MINIO_CUSTOM_URL", default="http://localhost:9000").split("://")
+# Public URL used to build media/static links. Parsed robustly so a missing/extra
+# "://" can't raise at import time.
+_custom_url = config("DJANGO_MINIO_CUSTOM_URL", default="http://localhost:9000")
+_parsed = urlsplit(_custom_url)
+_protocol = _parsed.scheme or "http"
+_domain = _parsed.netloc or _parsed.path  # tolerate a bare "host:port" without scheme
 
 _s3_options = {
     "access_key": _minio_access_key,
@@ -89,71 +95,63 @@ ROSETTA_ACCESS_CONTROL_FUNCTION = _rosetta_access_control
 ROSETTA_LOGIN_URL = "/admin/login/"
 
 # =============================================================================
-# Logging
+# Logging (django-structlog -> stdout)
 # =============================================================================
+# Logs go to the container's stdout only (no files). The level is controlled by
+# DJANGO_LOG_LEVEL (default INFO). Dev gets a human-friendly console renderer;
+# stage/prod emit one JSON object per line for log shippers.
 
-_LOG_DIR = BASE_DIR / "logs"
-_LOG_DIR.mkdir(parents=True, exist_ok=True)
+LOG_LEVEL = config("DJANGO_LOG_LEVEL", default="INFO").upper()
 
-
-class _JsonFormatter(logging.Formatter):
-    def format(self, record):
-        log_message = {
-            "level": record.levelname,
-            "module": record.module,
-            "timestamp": datetime.fromtimestamp(record.created, tz=ZoneInfo(TIME_ZONE)).isoformat(),
-        }
-        if isinstance(record.msg, dict):
-            log_message["message"] = record.msg
-        else:
-            log_message["message"] = record.getMessage()
-        return json.dumps(log_message, ensure_ascii=False)
-
+_shared_processors = [
+    structlog.contextvars.merge_contextvars,
+    structlog.stdlib.add_logger_name,
+    structlog.stdlib.add_log_level,
+    structlog.stdlib.PositionalArgumentsFormatter(),
+    structlog.processors.TimeStamper(fmt="iso"),
+    structlog.processors.StackInfoRenderer(),
+    structlog.processors.format_exc_info,
+    structlog.processors.UnicodeDecoder(),
+]
 
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
     "formatters": {
-        "json": {"()": _JsonFormatter},
-        "verbose": {
-            "format": "{levelname} {asctime} {module} {message}",
-            "style": "{",
-            "datefmt": "%Y-%m-%dT%H:%M:%S%z",
+        "json": {
+            "()": structlog.stdlib.ProcessorFormatter,
+            "processor": structlog.processors.JSONRenderer(),
+            "foreign_pre_chain": _shared_processors,
         },
-        "simple": {
-            "format": "{levelname} {message}",
-            "style": "{",
+        "console": {
+            "()": structlog.stdlib.ProcessorFormatter,
+            "processor": structlog.dev.ConsoleRenderer(colors=True),
+            "foreign_pre_chain": _shared_processors,
         },
     },
     "handlers": {
         "console": {
-            "level": "DEBUG",
             "class": "logging.StreamHandler",
-            "formatter": "verbose",
+            "formatter": "console" if DEBUG else "json",
         },
-        "error_file": {
-            "level": "ERROR",
-            "class": "logging.FileHandler",
-            "filename": _LOG_DIR / "error.log",
-            "formatter": "verbose",
-        },
-        "file_json": {
-            "level": "DEBUG",
-            "class": "logging.FileHandler",
-            "filename": _LOG_DIR / "file_json.log",
-            "formatter": "json",
-        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": LOG_LEVEL,
     },
     "loggers": {
-        "django": {
-            "handlers": ["console", "error_file"],
-            "level": "INFO",
-            "propagate": False,
-        },
-        "file_json": {
-            "handlers": ["file_json"],
-            "level": "DEBUG",
-            "propagate": True,
-        },
+        "django": {"handlers": ["console"], "level": LOG_LEVEL, "propagate": False},
+        "django_structlog": {"handlers": ["console"], "level": LOG_LEVEL, "propagate": False},
+        "celery": {"handlers": ["console"], "level": LOG_LEVEL, "propagate": False},
     },
 }
+
+structlog.configure(
+    processors=[
+        *_shared_processors,
+        structlog.stdlib.ProcessorFormatter.wrap_for_formatter,
+    ],
+    logger_factory=structlog.stdlib.LoggerFactory(),
+    wrapper_class=structlog.stdlib.BoundLogger,
+    cache_logger_on_first_use=True,
+)

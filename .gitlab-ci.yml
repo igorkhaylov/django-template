@@ -1,11 +1,28 @@
-variables:
-  IMAGE_NAME: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_SLUG}
-  SENTRY_RELEASE: ${CI_COMMIT_SHA}
+# GitLab CI: test -> build (push image to the GitLab Container Registry) -> deploy
+# (pull that image on the server). The server never builds — it pulls, mirroring the
+# GitHub Actions build-push.yml model.
+#
+# Image tags produced (against $CI_REGISTRY_IMAGE, lowercased):
+#   - sha-<full-sha>   every build  (deploy pins THIS — reproducible)
+#   - latest           default branch only
+#   - vX.Y.Z + X.Y.Z   on a `git tag vX.Y.Z` push
+#
+# Required CI/CD variables:
+#   CI_REGISTRY*            (predefined) — used by the build job to push
+#   CI_DEPLOY_USER / CI_DEPLOY_PASSWORD  — a project Deploy Token (scope: read_registry),
+#                                          used by the server to pull (long-lived, read-only)
+#   DEV_SSH_KEY/DEV_HOST/DEV_PORT/DEV_USER/DEV_PATH   (+ PROD_* equivalents)
 
 stages:
   - test
   - build
   - deploy
+
+# Reused tag rule: branch pipelines on dev/master, plus semver tag pipelines (vX.Y.Z).
+.app_rules: &app_rules
+  - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+/
+  - if: $CI_COMMIT_BRANCH == "dev"
+  - if: $CI_COMMIT_BRANCH == "master"
 
 # ============ TEST STAGE ============
 test:
@@ -13,15 +30,20 @@ test:
   tags:
     - default
   script:
-    - docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test
+    - docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from backend
   after_script:
     - docker compose -f docker-compose.test.yml down -v
   rules:
+    # MR pipelines (gate) + the shared branch/tag rules. The tag rule MUST be here too,
+    # otherwise `build: needs: [test]` breaks the tag pipeline ("depends on test which
+    # is not in the pipeline").
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+/
     - if: $CI_COMMIT_BRANCH == "dev"
     - if: $CI_COMMIT_BRANCH == "master"
 
 # ============ BUILD STAGE ============
+# Build once as sha-<sha>, then tag/push the human-friendly pointers.
 build:
   stage: build
   tags:
@@ -29,69 +51,87 @@ build:
   needs:
     - test
   before_script:
-    - echo $CI_REGISTRY_PASSWORD | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
+    - echo "$CI_REGISTRY_PASSWORD" | docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" --password-stdin
   script:
-    - docker build --file .docker/backend/Dockerfile --build-arg SENTRY_RELEASE=$SENTRY_RELEASE --tag $IMAGE_NAME .
-    - docker push $IMAGE_NAME
+    # Docker refs must be lowercase; the group/project path may contain uppercase.
+    - IMAGE=$(echo "$CI_REGISTRY_IMAGE" | tr '[:upper:]' '[:lower:]')
+    - SHA_TAG="$IMAGE:sha-$CI_COMMIT_SHA"
+    - docker build --file Dockerfile --tag "$SHA_TAG" .
+    - docker push "$SHA_TAG"
+    - |
+      if [ -n "$CI_COMMIT_TAG" ]; then
+        VERSION="${CI_COMMIT_TAG#v}"                 # v1.2.3 -> 1.2.3
+        docker tag "$SHA_TAG" "$IMAGE:$CI_COMMIT_TAG" && docker push "$IMAGE:$CI_COMMIT_TAG"
+        docker tag "$SHA_TAG" "$IMAGE:$VERSION"       && docker push "$IMAGE:$VERSION"
+      fi
+    - |
+      if [ "$CI_COMMIT_BRANCH" = "$CI_DEFAULT_BRANCH" ]; then
+        docker tag "$SHA_TAG" "$IMAGE:latest" && docker push "$IMAGE:latest"
+      fi
   after_script:
-    - docker logout $CI_REGISTRY
-  rules:
-    - if: $CI_COMMIT_BRANCH == "dev"
-    - if: $CI_COMMIT_BRANCH == "master"
+    - docker logout "$CI_REGISTRY"
+  rules: *app_rules
 
 # ============ DEPLOY STAGE ============
-deploy-dev:
+# Pull the pinned sha- image on the server and (re)start via the pull-only prod compose.
+# The server must have a checkout (compose + nginx/nginx.conf + .env) at $*_PATH.
+.deploy_template: &deploy_template
   stage: deploy
   tags:
     - default
   needs:
     - build
-  environment:
-    name: development
   before_script:
     - mkdir -p ~/.ssh
-    - echo "$DEV_SSH_KEY" > ~/.ssh/deploy_key
+    - echo "$SSH_KEY" > ~/.ssh/deploy_key
     - chmod 600 ~/.ssh/deploy_key
-    - ssh-keyscan -H $DEV_HOST >> ~/.ssh/known_hosts
+    - ssh-keyscan -H -p "${SSH_PORT:-22}" "$SSH_HOST" >> ~/.ssh/known_hosts
   script:
+    - IMAGE=$(echo "$CI_REGISTRY_IMAGE" | tr '[:upper:]' '[:lower:]')
+    - BACKEND_IMAGE="$IMAGE:sha-$CI_COMMIT_SHA"
+    # Quoted heredoc: server-side vars are forwarded explicitly via `ssh VAR=... bash -s`
+    # so the runner does not expand/mangle them.
     - |
-      ssh -i ~/.ssh/deploy_key -p ${DEV_PORT:-22} $DEV_USER@$DEV_HOST << EOF
-        cd $DEV_PATH
-        echo $CI_REGISTRY_PASSWORD | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
-        docker pull $IMAGE_NAME
-        docker compose down
-        docker compose up -d
-        docker image prune -f
+      ssh -i ~/.ssh/deploy_key -p "${SSH_PORT:-22}" "$SSH_USER@$SSH_HOST" \
+        BACKEND_IMAGE="$BACKEND_IMAGE" \
+        DEPLOY_PATH="$SSH_PATH" \
+        CI_REGISTRY="$CI_REGISTRY" \
+        CI_DEPLOY_USER="$CI_DEPLOY_USER" \
+        CI_DEPLOY_PASSWORD="$CI_DEPLOY_PASSWORD" 'bash -s' <<'EOF'
+        set -euo pipefail
+        cd "$DEPLOY_PATH"
+        echo "$CI_DEPLOY_PASSWORD" | docker login "$CI_REGISTRY" -u "$CI_DEPLOY_USER" --password-stdin
+        export BACKEND_IMAGE
+        docker compose -f docker-compose.prod.yml pull
+        docker compose -f docker-compose.prod.yml up -d
+        docker logout "$CI_REGISTRY"
+        docker image prune -f --filter "until=72h"
       EOF
   after_script:
     - rm -f ~/.ssh/deploy_key
+
+deploy-dev:
+  <<: *deploy_template
+  environment:
+    name: development
+  variables:
+    SSH_KEY: $DEV_SSH_KEY
+    SSH_HOST: $DEV_HOST
+    SSH_PORT: $DEV_PORT
+    SSH_USER: $DEV_USER
+    SSH_PATH: $DEV_PATH
   rules:
     - if: $CI_COMMIT_BRANCH == "dev"
 
 deploy-prod:
-  stage: deploy
-  tags:
-    - default
-  needs:
-    - build
+  <<: *deploy_template
   environment:
     name: production
-  before_script:
-    - mkdir -p ~/.ssh
-    - echo "$PROD_SSH_KEY" > ~/.ssh/deploy_key
-    - chmod 600 ~/.ssh/deploy_key
-    - ssh-keyscan -H $PROD_HOST >> ~/.ssh/known_hosts
-  script:
-    - |
-      ssh -i ~/.ssh/deploy_key -p ${PROD_PORT:-22} $PROD_USER@$PROD_HOST << EOF
-        cd $PROD_PATH
-        echo $CI_REGISTRY_PASSWORD | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
-        docker pull $IMAGE_NAME
-        docker compose down
-        docker compose up -d
-        docker image prune -f
-      EOF
-  after_script:
-    - rm -f ~/.ssh/deploy_key
+  variables:
+    SSH_KEY: $PROD_SSH_KEY
+    SSH_HOST: $PROD_HOST
+    SSH_PORT: $PROD_PORT
+    SSH_USER: $PROD_USER
+    SSH_PATH: $PROD_PATH
   rules:
     - if: $CI_COMMIT_BRANCH == "master"

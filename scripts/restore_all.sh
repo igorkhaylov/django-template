@@ -1,84 +1,58 @@
-#!/bin/bash
+#!/usr/bin/env bash
+#
+# Restore a backup created by dump_all.sh.
+#   1. Restore the database from database.sql.gz (drops & recreates objects in place
+#      via the dump's `--clean --if-exists` statements; no full DROP DATABASE).
+#   2. Upload media.tar.gz to the CURRENT S3/MinIO (only if present in the backup).
+#   3. Rewrite absolute media URLs embedded in HTML/text from the backup's
+#      media_base_url to the current one — so a restore into a DIFFERENT S3
+#      (different domain/bucket) keeps every in-content image/file working.
+#
+# Usage:
+#   make restore dumps/<ts>
+#   make dev restore dumps/<ts>
+#   ./scripts/restore_all.sh dumps/<ts>
+#
+set -euo pipefail
+cd "$(dirname "$0")/.."
 
-set -e
+COMPOSE="${COMPOSE:-docker compose}"
+EXEC="${EXEC:-}"   # extra `docker compose exec` flags (e.g. --workdir /app/backend for the dev stack)
+DIR="${1:-}"
 
-if [ -z "$1" ]; then
-  echo "Usage: ./scripts/restore_all.sh /path/to/dumps/..."
+if [ -z "$DIR" ] || [ ! -d "$DIR" ]; then
+  echo "Usage: ./scripts/restore_all.sh <backup-directory>   (e.g. dumps/2026-06-16_12-00-00)" >&2
   exit 1
 fi
 
-RESTORE_DIR="$1"
-DB_CONTAINER="db"
-BACKEND_CONTAINER="backend"
-SQL_DUMP_FILE="${RESTORE_DIR}/backup.sql"
-MEDIA_ARCHIVE="${RESTORE_DIR}/media_backup.tar.gz"
-TMP_DUMP_PATH="/tmp/restore_dump.sql"
-TMP_TAR_PATH="/tmp/restore_files.tar.gz"
-
-# Load environment variables
+ENV_FILE="./.env"
+if [ ! -f "$ENV_FILE" ]; then
+  echo "Error: $ENV_FILE not found (needed for Postgres credentials)." >&2
+  exit 1
+fi
 set -a
-source "$(dirname "$0")/../.env"
+. "$ENV_FILE"
 set +a
+: "${POSTGRES_USER:?POSTGRES_USER is not set in .env}"
+: "${POSTGRES_DB:?POSTGRES_DB is not set in .env}"
 
-echo "Restoring from: $RESTORE_DIR"
+echo "→ Restoring from ${DIR}"
 
-if [ ! -f "$SQL_DUMP_FILE" ]; then
-  echo "Error: database dump not found: $SQL_DUMP_FILE"
-  exit 1
+if [ -f "$DIR/database.sql.gz" ]; then
+  echo "  • database…"
+  gunzip -c "$DIR/database.sql.gz" \
+    | $COMPOSE exec -T db psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -q -v ON_ERROR_STOP=1
 fi
 
-if [ ! -f "$MEDIA_ARCHIVE" ]; then
-  echo "Error: media archive not found: $MEDIA_ARCHIVE"
-  exit 1
+if [ -f "$DIR/media.tar.gz" ]; then
+  echo "  • media → S3/MinIO…"
+  $COMPOSE exec -T $EXEC backend python manage.py media_load <"$DIR/media.tar.gz"
 fi
 
-# --- Restore Django media files ---
-echo "Restoring Django media files..."
-docker compose cp "$MEDIA_ARCHIVE" "${BACKEND_CONTAINER}:${TMP_TAR_PATH}"
+if [ -f "$DIR/manifest.json" ]; then
+  OLD_BASE="$(python3 -c "import json; print(json.load(open('$DIR/manifest.json'))['media_base_url'])")"
+  echo "  • rewriting embedded media URLs from ${OLD_BASE} → current S3/MinIO…"
+  $COMPOSE exec -T $EXEC backend python manage.py rewrite_media_urls --from "$OLD_BASE"
+fi
 
-docker compose exec -T "$BACKEND_CONTAINER" bash -c "
-  echo 'Cleaning old /app/media contents...'
-  rm -rf /app/media/*
-
-  echo 'Extracting media archive...'
-  tar --no-same-owner -xzf $TMP_TAR_PATH -C /app
-
-  rm -f $TMP_TAR_PATH || echo 'Warning: could not remove temp archive (non-critical)'
-"
-
-echo "Django media files restored"
-
-# --- Stop services before database restore ---
-echo "Stopping services before database restore..."
-docker compose stop
-
-# --- Restore database ---
-docker compose up $DB_CONTAINER -d
-echo "Restoring database '$POSTGRES_DB'..."
-
-docker compose cp "$SQL_DUMP_FILE" "${DB_CONTAINER}:${TMP_DUMP_PATH}"
-
-docker compose exec -T "$DB_CONTAINER" bash -c "
-  echo 'Terminating active connections and dropping database...'
-  psql -U $POSTGRES_USER -d postgres -c \"
-    SELECT pg_terminate_backend(pid)
-    FROM pg_stat_activity
-    WHERE datname = '$POSTGRES_DB' AND pid <> pg_backend_pid();
-  \"
-
-  psql -U $POSTGRES_USER -d postgres -c 'DROP DATABASE IF EXISTS \"$POSTGRES_DB\";'
-  psql -U $POSTGRES_USER -d postgres -c 'CREATE DATABASE \"$POSTGRES_DB\" OWNER \"$POSTGRES_USER\";'
-
-  echo 'Restoring from dump...'
-  pg_restore -U $POSTGRES_USER -d \"$POSTGRES_DB\" \"$TMP_DUMP_PATH\"
-
-  rm -f \"$TMP_DUMP_PATH\"
-"
-
-echo "Database restored"
-
-# --- Restart services ---
-echo "Restarting services..."
-docker compose start
-
-echo "Restore completed successfully!"
+echo "✓ Restore complete."

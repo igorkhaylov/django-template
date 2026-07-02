@@ -2,6 +2,7 @@ import os
 import sys
 from pathlib import Path
 
+from django.core.exceptions import ImproperlyConfigured
 from django.utils.translation import gettext_lazy as _
 
 from corsheaders.defaults import default_headers, default_methods
@@ -19,9 +20,28 @@ sys.path.append(os.path.join(BASE_DIR, "apps"))
 # =============================================================================
 
 ENVIRONMENT = config("ENVIRONMENT", default="prod")
-APP_NAME = config("DJANGO_APP_NAME", default="AppName")
-SECRET_KEY = config("DJANGO_SECRET_KEY")
+_ALLOWED_ENVIRONMENTS = ("dev", "test", "stage", "prod")
+if ENVIRONMENT not in _ALLOWED_ENVIRONMENTS:
+    raise ImproperlyConfigured(
+        f"ENVIRONMENT must be one of {_ALLOWED_ENVIRONMENTS}, got {ENVIRONMENT!r}. "
+        "DEBUG and all security flags are derived from this single value, so an "
+        "unrecognized value (e.g. 'production') would silently run insecurely."
+    )
+
+# Single source of truth: derive DEBUG and every security flag from the validated value.
 DEBUG = ENVIRONMENT == "dev"
+IS_SECURE_ENV = ENVIRONMENT in ("stage", "prod")
+
+APP_NAME = config("DJANGO_APP_NAME", default="AppName")
+
+# A dev-friendly default keeps management commands and tests runnable without a full
+# environment; stage/prod must provide a strong, explicit key (validated just below).
+SECRET_KEY = config("DJANGO_SECRET_KEY", default="django-insecure-dev-only-change-me")
+if IS_SECURE_ENV and (SECRET_KEY.startswith("django-insecure") or len(SECRET_KEY) < 50):
+    raise ImproperlyConfigured(
+        "DJANGO_SECRET_KEY must be a strong, explicit value of at least 50 chars in "
+        "stage/prod. Generate one with: openssl rand -hex 64"
+    )
 
 ALLOWED_HOSTS = config(
     "DJANGO_ALLOWED_HOSTS",
@@ -38,10 +58,30 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # Security
 # =============================================================================
 
-SECURE_SSL_REDIRECT = ENVIRONMENT in ("stage", "prod")
-SESSION_COOKIE_SECURE = ENVIRONMENT in ("stage", "prod")
-SECURE_REDIRECT_EXEMPT = [r"^healthcheck/"]
+# This app ALWAYS runs behind a reverse proxy that terminates TLS, holds the
+# certificates and sets `X-Forwarded-Proto`. Django trusts that header here, so it
+# correctly treats proxied HTTPS requests as secure and SECURE_SSL_REDIRECT does not
+# loop. The in-stack nginx must NOT re-set X-Forwarded-Proto — doing so would overwrite
+# the edge proxy's value (the line is intentionally left commented in nginx/nginx.conf).
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+SECURE_SSL_REDIRECT = IS_SECURE_ENV
+SECURE_REDIRECT_EXEMPT = [r"^healthcheck/"]
+
+SESSION_COOKIE_SECURE = IS_SECURE_ENV
+CSRF_COOKIE_SECURE = IS_SECURE_ENV
+
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
+
+# HSTS is only meaningful once TLS terminates correctly at the reverse proxy.
+SECURE_HSTS_SECONDS = 31536000 if IS_SECURE_ENV else 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = IS_SECURE_ENV
+SECURE_HSTS_PRELOAD = IS_SECURE_ENV
+
+# Cap request body size (Django default is 2.5 MB); large media goes to S3 directly.
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10 MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10 MB
 
 CSRF_TRUSTED_ORIGINS = config(
     "DJANGO_CSRF_TRUSTED_ORIGINS",
@@ -78,9 +118,10 @@ INSTALLED_APPS = [
     "rest_framework",
     "django_filters",
     "corsheaders",
-    "celery",
+    "django_structlog",
     "stdimage",
     # Local
+    "common",
     "users",
 ]
 
@@ -94,6 +135,8 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    # Binds request_id + user_id to every structlog log line.
+    "django_structlog.middlewares.RequestMiddleware",
 ]
 
 # =============================================================================
@@ -103,9 +146,9 @@ MIDDLEWARE = [
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": config("POSTGRES_DB"),
-        "USER": config("POSTGRES_USER"),
-        "PASSWORD": config("POSTGRES_PASSWORD"),
+        "NAME": config("POSTGRES_DB", default="app"),
+        "USER": config("POSTGRES_USER", default="app"),
+        "PASSWORD": config("POSTGRES_PASSWORD", default="app"),
         "HOST": config("POSTGRES_HOST", default="db"),
         "PORT": config("POSTGRES_PORT", default="5432"),
     }
@@ -173,7 +216,7 @@ MEDIA_ROOT = BASE_DIR / "media"
 # Internationalization
 # =============================================================================
 
-LANGUAGE_CODE = "en-us"
+LANGUAGE_CODE = "en"
 TIME_ZONE = "Asia/Tashkent"
 USE_I18N = True
 USE_TZ = True
@@ -185,5 +228,5 @@ LANGUAGES = (
 
 LOCALE_PATHS = [BASE_DIR / "locale/"]
 
-MODELTRANSLATION_DEFAULT_LANGUAGE = "ru"
-MODELTRANSLATION_LANGUAGES = ("ru", "en")
+MODELTRANSLATION_DEFAULT_LANGUAGE = "en"
+MODELTRANSLATION_LANGUAGES = ("en", "ru")

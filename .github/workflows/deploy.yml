@@ -1,0 +1,114 @@
+name: Deploy
+
+# SSH-based deploy from a GitHub-hosted runner. The runner connects to the target
+# server; the SERVER logs in to GHCR, pulls the prebuilt backend image (from
+# build-push.yml) and updates the stack via docker-compose.prod.yml — nothing is built.
+#
+# Runs automatically after "Build and push backend image" succeeds on master (deploys
+# the exact sha-<full-sha> that was just built), or manually with a chosen tag.
+#
+# Per-environment secrets live in GitHub Environments (prod / dev). Required secrets:
+#   SSH_HOST  SSH_USER  SSH_PORT  SSH_KEY          — connection (dedicated deploy keypair)
+#   SSH_FINGERPRINT                                — server host-key SHA256 (host-key pinning)
+#   DEPLOY_PATH                                    — path to the repo checkout on the server
+#   GHCR_USER  GHCR_PAT                            — GitHub user + PAT with `read:packages` only
+#
+# The server holds a git checkout at DEPLOY_PATH (provides docker-compose.prod.yml +
+# nginx/nginx.conf) and its own ./.env (provisioned out-of-band; NOT created by CI —
+# see the optional snippet at the bottom if you prefer CI to write it).
+
+on:
+  workflow_run:
+    workflows: ["Build and push backend image"]
+    types: [completed]
+    branches: [master]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        type: choice
+        options: [prod, dev]
+        default: prod
+      image_tag:
+        description: "GHCR tag to deploy (latest, or sha-<full-sha> to pin)"
+        default: latest
+
+permissions:
+  contents: read
+
+# Never let two deploys to the same environment overlap (a cancelled `up -d` can leave a
+# half-updated stack). Queue instead of cancel.
+concurrency:
+  group: deploy-${{ github.event.inputs.environment || 'prod' }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    # On the auto path, only deploy if the image build actually succeeded.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'prod' }}
+    steps:
+      - name: Resolve image tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            # Deploy the exact commit that was just built+pushed (reproducible).
+            echo "tag=sha-${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
+            echo "sha=${{ github.event.workflow_run.head_sha }}"     >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${{ github.event.inputs.image_tag }}" >> "$GITHUB_OUTPUT"
+            echo "sha=${{ github.sha }}"                    >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          port: ${{ secrets.SSH_PORT }}
+          key: ${{ secrets.SSH_KEY }}
+          # Host-key pinning (recommended). Leave the secret unset only if you accept TOFU.
+          fingerprint: ${{ secrets.SSH_FINGERPRINT }}
+          envs: GHCR_USER,GHCR_PAT,DEPLOY_PATH,IMAGE_TAG,DEPLOY_SHA,IMAGE_OWNER
+          script: |
+            set -euo pipefail
+            cd "$DEPLOY_PATH"
+
+            # Sync compose + nginx.conf to the deployed commit (./.env is gitignored and
+            # left untouched). Do NOT `git clean` here — it would delete .env / local overrides.
+            git fetch --all --prune
+            git reset --hard "$DEPLOY_SHA"
+
+            echo "$GHCR_PAT" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
+
+            # Docker refs must be lowercase (github.repository may contain uppercase on forks).
+            IMAGE_OWNER=$(echo "$IMAGE_OWNER" | tr '[:upper:]' '[:lower:]')
+            export BACKEND_IMAGE="ghcr.io/${IMAGE_OWNER}:${IMAGE_TAG}"
+            docker compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod.yml up -d   # recreates only changed services; no `down`
+
+            docker logout ghcr.io
+            docker image prune -f --filter "until=72h"        # keep prev image ~3d for rollback
+        env:
+          GHCR_USER: ${{ secrets.GHCR_USER }}
+          GHCR_PAT: ${{ secrets.GHCR_PAT }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          IMAGE_TAG: ${{ steps.tag.outputs.tag }}
+          DEPLOY_SHA: ${{ steps.tag.outputs.sha }}
+          # Owner/repo of the GHCR image (lowercase). Matches build-push.yml's push target.
+          IMAGE_OWNER: ${{ github.repository }}
+
+# ---------------------------------------------------------------------------------------
+# OPTION: let CI write the server's .env from a secret (NOT the default — secrets then
+# live in GitHub and are overwritten every deploy). Add a secret DOTENV with the full
+# .env contents, add DOTENV to `envs:` above, and prepend to the script:
+#
+#   cd "$DEPLOY_PATH"
+#   umask 077
+#   printf '%s' "$DOTENV" > .env
+#
+# Prefer keeping .env on the server (the default above): fewer places hold secrets.
+# ---------------------------------------------------------------------------------------

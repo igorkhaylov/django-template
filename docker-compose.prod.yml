@@ -1,8 +1,15 @@
 name: ${PROJECT_NAME:-django-template}
 
+# Production deploy compose. The backend image is PULLED from the registry — nothing is
+# built on the server. Pin the exact image/tag via BACKEND_IMAGE in .env, e.g.
+#   BACKEND_IMAGE=ghcr.io/igorkhaylov/django-template:sha-<full-sha>
+# (a moving :latest works too, but pin a sha-/digest for reproducible deploys).
+#
+# Files the server needs: this file + ./.env + ./nginx/nginx.conf
+# Deploy:  make prod deploy   (= docker compose -f docker-compose.prod.yml pull && up -d)
 
-# Caps Docker's json-file logs so they can't fill the host disk (the default driver
-# has NO rotation). Referenced by every service below.
+
+# Caps Docker's json-file logs so they can't fill the host disk (default driver has no rotation).
 x-logging: &default-logging
   driver: json-file
   options:
@@ -11,15 +18,13 @@ x-logging: &default-logging
 
 
 x-backend-defaults: &backend-defaults
-  build:
-    context: .
-    dockerfile: ./Dockerfile
+  image: ${BACKEND_IMAGE:-ghcr.io/igorkhaylov/django-template:latest}
+  pull_policy: always
   env_file:
     - ./.env
   logging: *default-logging
-  # Lets the backend reach a shared host MinIO via host.docker.internal on Linux when
-  # storage is local (no-op on Docker Desktop). In stage/prod DJANGO_MINIO_ENDPOINT
-  # points at managed MinIO/S3 instead, and this mapping is simply unused.
+  # Harmless no-op when DJANGO_MINIO_ENDPOINT points at managed S3; preserves the
+  # "managed MinIO on the host" option if you ever reach storage via host.docker.internal.
   extra_hosts:
     - "host.docker.internal:host-gateway"
   depends_on:
@@ -131,10 +136,9 @@ services:
           cpus: "1.0"
           memory: 1g
 
-  # NOTE: object storage (MinIO / S3) is NOT part of this compose. Locally it is a
-  # single SHARED MinIO managed on the host by `./scripts/ensure_minio.sh` (make minio);
-  # in stage/prod point DJANGO_MINIO_* at your managed MinIO / S3. The backend reaches
-  # it via DJANGO_MINIO_ENDPOINT (e.g. http://host.docker.internal:9000 in local dev).
+  # NOTE: object storage (MinIO / S3) is NOT part of this compose. In prod, point
+  # DJANGO_MINIO_* at your managed MinIO / S3. Static and media are served from there,
+  # so nginx needs NO static volume.
 
   nginx:
     image: nginx:stable-alpine

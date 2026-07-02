@@ -1,22 +1,66 @@
-# If "dev" is passed, use dev compose file
-# Usage: make up / make dev up / make dev logs backend
+# Usage:
+#   make dev up             # start the development stack (containers up; backend idle)
+#   make dev run            # run the Django dev server (autoreload) — reach it at APP_PORT
+#   make up                 # local production-like stack (builds + serves via gunicorn)
+#   make prod deploy        # SERVER: pull the registry image and (re)start (no build)
+#   make dev makemigrations # run a manage.py command in the dev stack
+#   make dev logs backend   # tail logs of a service
+#   make minio              # provision bucket on the SHARED local MinIO (host service)
+#
+# DEV WORKFLOW: `make dev up` brings the stack online but the backend just idles
+# (`sleep infinity`) so you can run migrations/shell/tests freely against a live DB.
+# It does NOT serve HTTP by itself — start the server explicitly with `make dev run`
+# (foreground, autoreload), then open http://localhost:$APP_PORT.
+#
+# Prefix selects the compose file:
+#   dev  -> docker-compose.dev.yml   (repo bind-mounted at /app, manage.py at /app/backend -> EXEC)
+#   prod -> docker-compose.prod.yml  (pulls the prebuilt image; never builds)
+#   none -> docker-compose.yml       (local, builds from source)
+
 ifneq ($(filter dev,$(MAKECMDGOALS)),)
   COMPOSE := docker compose -f docker-compose.dev.yml
+  EXEC := --workdir /app/backend
+else ifneq ($(filter prod,$(MAKECMDGOALS)),)
+  COMPOSE := docker compose -f docker-compose.prod.yml
+  EXEC :=
 else
   COMPOSE := docker compose
+  EXEC :=
 endif
 
-# Extra args: MAKECMDGOALS minus "dev" — target name ($@) is filtered in recipes
-ARGS = $(filter-out dev $@,$(MAKECMDGOALS))
+# Extra args: MAKECMDGOALS minus "dev"/"prod" and the target name ($@).
+ARGS = $(filter-out dev prod $@,$(MAKECMDGOALS))
 
-.PHONY: dev up down down-v build logs shell dbshell migrate makemigrations test lint format flush-redis dump restore bash bash-db bash-nginx collectstatic createsuperuser
+.PHONY: help dev prod up run down down-v build pull deploy logs shell dbshell migrate \
+        makemigrations makemessages compilemessages collectstatic createsuperuser \
+        test lint format pre-commit-install minio flush-redis dump restore \
+        bash bash-db bash-nginx
+
+help:
+	@echo "Prefix a target with 'dev' (development) or 'prod' (pull-based deploy):"
+	@echo "  dev up      then  dev run        # start stack, then serve (autoreload) at APP_PORT"
+	@echo "  up / down / down-v / build / logs [service]"
+	@echo "  prod pull / prod deploy          # server: pull the registry image and (re)start"
+	@echo "  shell dbshell bash bash-db bash-nginx"
+	@echo "  migrate makemigrations makemessages compilemessages collectstatic createsuperuser"
+	@echo "  test lint format pre-commit-install"
+	@echo "  minio flush-redis dump restore"
 
 dev:
 	@:
 
-# Docker
+prod:
+	@:
+
+# --- Docker lifecycle ---
 up:
 	$(COMPOSE) up -d --build
+
+# Dev only: run the Django dev server in the foreground (autoreload) inside the
+# already-running backend container. Reachable via nginx at http://localhost:$APP_PORT.
+# Run `make dev up` first. Ctrl-C stops the server; the stack keeps running.
+run:
+	$(COMPOSE) exec $(EXEC) backend python manage.py runserver 0.0.0.0:8000
 
 down:
 	$(COMPOSE) down
@@ -27,44 +71,80 @@ down-v:
 build:
 	$(COMPOSE) build
 
+pull:
+	$(COMPOSE) pull
+
+# Server-side deploy: pull the prebuilt image from the registry and (re)start.
+# Usage on the server:  make prod deploy
+# Pin a tag by exporting BACKEND_IMAGE (or set it in .env) before running.
+deploy:
+	$(COMPOSE) pull
+	$(COMPOSE) up -d
+
 logs:
 	$(COMPOSE) logs -f $(ARGS)
 
-# Django commands
+# --- Django management ---
 shell:
-	$(COMPOSE) exec backend python manage.py shell
+	$(COMPOSE) exec $(EXEC) backend python manage.py shell
 
 dbshell:
-	$(COMPOSE) exec db psql -U $${POSTGRES_USER:-django_template_user} -d $${POSTGRES_DB:-django_template}
+	$(COMPOSE) exec db psql -U $${POSTGRES_USER:-app} -d $${POSTGRES_DB:-app}
 
 migrate:
-	$(COMPOSE) exec backend python manage.py migrate
+	$(COMPOSE) exec $(EXEC) backend python manage.py migrate
 
 makemigrations:
-	$(COMPOSE) exec backend python manage.py makemigrations
+	$(COMPOSE) exec $(EXEC) backend python manage.py makemigrations
+
+makemessages:
+	$(COMPOSE) exec $(EXEC) backend python manage.py makemessages -l ru -l en --ignore .venv
+
+compilemessages:
+	$(COMPOSE) exec $(EXEC) backend python manage.py compilemessages
 
 collectstatic:
-	$(COMPOSE) exec backend python manage.py collectstatic --no-input
+	$(COMPOSE) exec $(EXEC) backend python manage.py collectstatic --no-input
 
 createsuperuser:
-	$(COMPOSE) exec backend python manage.py createsuperuser
+	$(COMPOSE) exec $(EXEC) backend python manage.py createsuperuser
 
-# Quality
+# --- Quality ---
 test:
-	$(COMPOSE) exec backend pytest
+	$(COMPOSE) exec $(EXEC) backend pytest
 
 lint:
-	$(COMPOSE) exec backend ruff check .
+	$(COMPOSE) exec $(EXEC) backend ruff check .
 
 format:
-	$(COMPOSE) exec backend ruff format .
+	$(COMPOSE) exec $(EXEC) backend ruff format .
 
 pre-commit-install:
 	pre-commit install
 
-# Connect to containers
+# --- MinIO (provision object storage against the SHARED local MinIO) ---
+# Starts the single shared host MinIO if needed, then creates this project's bucket +
+# app user + policy. Skips entirely if the project points at external/managed storage.
+# Not prefixed with `dev`: it manages a host-level service, independent of the stack.
+minio:
+	./scripts/ensure_minio.sh
+
+# --- Utilities ---
+flush-redis:
+	$(COMPOSE) exec redis redis-cli FLUSHALL
+
+# Backup / restore (DB + manifest always; add "media" to also dump S3/MinIO media).
+# Examples: make dump | make dump media | make dev dump media
+#           make restore dumps/<ts> | make dev restore dumps/<ts>
+dump:
+	COMPOSE="$(COMPOSE)" EXEC="$(EXEC)" ./scripts/dump_all.sh $(ARGS)
+
+restore:
+	COMPOSE="$(COMPOSE)" EXEC="$(EXEC)" ./scripts/restore_all.sh $(ARGS)
+
+# --- Container shells ---
 bash:
-	$(COMPOSE) exec -it backend bash
+	$(COMPOSE) exec -it $(EXEC) backend bash
 
 bash-db:
 	$(COMPOSE) exec -it db bash
@@ -72,16 +152,6 @@ bash-db:
 bash-nginx:
 	$(COMPOSE) exec -it nginx sh
 
-# Utilities
-flush-redis:
-	$(COMPOSE) exec redis redis-cli FLUSHALL
-
-dump:
-	./scripts/dump_all.sh
-
-restore:
-	@echo "Usage: ./scripts/restore_all.sh <dump-directory>"
-
-# Catch extra arguments passed to targets (e.g. make logs backend)
+# Catch extra arguments (e.g. `make logs backend`) so make doesn't error on them.
 %:
 	@:

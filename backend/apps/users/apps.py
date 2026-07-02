@@ -6,4 +6,6 @@ class UsersConfig(AppConfig):
     name = "users"
 
     def ready(self):
-        pass
+        # Importing the module registers its @receiver(post_migrate) handlers,
+        # e.g. the one that creates the "Rosetta Users" group/permission.
+        from . import signals  # noqa: F401
