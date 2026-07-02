@@ -1,0 +1,163 @@
+name: ${PROJECT_NAME:-django-template}
+
+# Production deploy compose. The backend image is PULLED from the registry — nothing is
+# built on the server. Pin the exact image/tag via BACKEND_IMAGE in .env, e.g.
+#   BACKEND_IMAGE=ghcr.io/igorkhaylov/django-template:sha-<full-sha>
+# (a moving :latest works too, but pin a sha-/digest for reproducible deploys).
+#
+# Files the server needs: this file + ./.env + ./nginx/nginx.conf
+# Deploy:  make prod deploy   (= docker compose -f docker-compose.prod.yml pull && up -d)
+
+
+# Caps Docker's json-file logs so they can't fill the host disk (default driver has no rotation).
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+
+x-backend-defaults: &backend-defaults
+  image: ${BACKEND_IMAGE:-ghcr.io/igorkhaylov/django-template:latest}
+  pull_policy: always
+  env_file:
+    - ./.env
+  logging: *default-logging
+  # Harmless no-op when DJANGO_MINIO_ENDPOINT points at managed S3; preserves the
+  # "managed MinIO on the host" option if you ever reach storage via host.docker.internal.
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+  depends_on:
+    db:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+  restart: unless-stopped
+
+
+services:
+  backend:
+    <<: *backend-defaults
+    expose:
+      - 8000
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/healthcheck/ || exit 1"]
+      interval: 30s
+      retries: 5
+      # Generous grace window: migrate + collectstatic run before gunicorn binds.
+      start_period: 60s
+      timeout: 3s
+    command: bash scripts/entrypoint.sh
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1g
+
+  celery:
+    <<: *backend-defaults
+    command: celery -A config worker --loglevel=INFO --concurrency=2 -Q celery
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A config inspect ping -d celery@$$HOSTNAME || exit 1"]
+      interval: 30s
+      retries: 3
+      start_period: 30s
+      timeout: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1g
+
+  celery-beat:
+    <<: *backend-defaults
+    command: celery -A config beat --loglevel=INFO
+    # Best-effort: beat has no native ping, so we check that it has recently rewritten
+    # its schedule file (config/celery.py -> /tmp/celerybeat-schedule*). If beat wedges
+    # and stops ticking, the file goes stale and the check fails.
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          python -c "import glob,os,sys,time;
+          fs=glob.glob('/tmp/celerybeat-schedule*');
+          sys.exit(0 if fs and time.time()-max(os.path.getmtime(f) for f in fs) < 600 else 1)"
+      interval: 60s
+      retries: 3
+      start_period: 90s
+      timeout: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512m
+
+  redis:
+    image: redis:8
+    logging: *default-logging
+    # noeviction protects queued Celery messages from being dropped under memory pressure.
+    command: redis-server --save 60 1 --appendonly yes --maxmemory 256mb --maxmemory-policy noeviction
+    expose:
+      - 6379
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      retries: 5
+      timeout: 3s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 320m
+
+  db:
+    image: postgres:17.4
+    logging: *default-logging
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    expose:
+      - 5432
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 3s
+      retries: 5
+      timeout: 3s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1g
+
+  # NOTE: object storage (MinIO / S3) is NOT part of this compose. In prod, point
+  # DJANGO_MINIO_* at your managed MinIO / S3. Static and media are served from there,
+  # so nginx needs NO static volume.
+
+  nginx:
+    image: nginx:stable-alpine
+    logging: *default-logging
+    ports:
+      - "${APP_PORT:-8050}:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 128m
+
+
+volumes:
+  postgres-data:
+  redis-data:

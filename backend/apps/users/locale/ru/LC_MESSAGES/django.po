@@ -1,132 +1,130 @@
-# SOME DESCRIPTIVE TITLE.
-# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
-# This file is distributed under the same license as the PACKAGE package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+# Russian translations for the django-template users app.
+# This file is distributed under the same license as the package.
 #
-#, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: PACKAGE VERSION\n"
+"Project-Id-Version: 1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-10-01 09:01+0500\n"
-"PO-Revision-Date: 2025-10-01 06:12+0500\n"
-"Last-Translator: Anonymous User <anonymous@user.tld>\n"
-"Language-Team: LANGUAGE <LL@li.org>\n"
-"Language: \n"
+"POT-Creation-Date: 2026-07-02 16:55+0500\n"
+"PO-Revision-Date: 2026-07-02 16:55+0500\n"
+"Last-Translator: \n"
+"Language-Team: Russian\n"
+"Language: ru\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=4; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
 "n%10<=4 && (n%100<12 || n%100>14) ? 1 : n%10==0 || (n%10>=5 && n%10<=9) || "
 "(n%100>=11 && n%100<=14)? 2 : 3);\n"
-"X-Translated-Using: django-rosetta 0.10.2\n"
 
 #: apps/users/admin.py:15
-msgid "Personal info2"
-msgstr "Персональная информация2"
+msgid "Personal info"
+msgstr "Персональная информация"
 
 #: apps/users/admin.py:26
 msgid "Permissions"
-msgstr ""
+msgstr "Права доступа"
 
 #: apps/users/admin.py:37
 msgid "Important dates"
-msgstr ""
+msgstr "Важные даты"
 
 #: apps/users/admin.py:61
-msgid "Превью"
-msgstr ""
+msgid "Preview"
+msgstr "Превью"
 
-#: apps/users/models.py:71
+#: apps/users/admin.py:69 apps/users/models.py:118
+msgid "User"
+msgstr "Пользователь"
+
+#: apps/users/models.py:72
+msgid "Male"
+msgstr "Мужской"
+
+#: apps/users/models.py:73
+msgid "Female"
+msgstr "Женский"
+
+#: apps/users/models.py:76
 msgid "Username"
-msgstr ""
+msgstr "Имя пользователя"
 
-#: apps/users/models.py:77
+#: apps/users/models.py:81
 msgid "Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only."
-msgstr ""
+msgstr "Обязательно. Не более 150 символов. Только буквы, цифры и @/./+/-/_."
 
-#: apps/users/models.py:80
+#: apps/users/models.py:83
 msgid "A user with that username already exists."
-msgstr ""
+msgstr "Пользователь с таким именем уже существует."
 
-#: apps/users/models.py:84
+#: apps/users/models.py:87
 msgid "Name"
-msgstr ""
+msgstr "Имя"
 
-#: apps/users/models.py:86
+#: apps/users/models.py:89
 msgid "Date of birth"
-msgstr ""
+msgstr "Дата рождения"
 
-#: apps/users/models.py:88
+#: apps/users/models.py:90
 msgid "Gender"
-msgstr ""
+msgstr "Пол"
 
 #: apps/users/models.py:92
 msgid "Photo"
-msgstr ""
+msgstr "Фото"
 
-#: apps/users/models.py:96
+#: apps/users/models.py:95
 msgid "Staff status"
-msgstr ""
+msgstr "Статус персонала"
 
-#: apps/users/models.py:98
+#: apps/users/models.py:97
 msgid "Designates whether the user can log into this admin site."
-msgstr ""
+msgstr "Определяет, может ли пользователь входить в админ-панель."
 
-#: apps/users/models.py:101
+#: apps/users/models.py:100
 msgid "Active"
-msgstr ""
+msgstr "Активен"
 
-#: apps/users/models.py:104
+#: apps/users/models.py:103
 msgid ""
 "Designates whether this user should be treated as active. Unselect this "
 "instead of deleting accounts."
 msgstr ""
+"Определяет, считать ли пользователя активным. Снимите отметку вместо "
+"удаления учётной записи."
 
-#: apps/users/models.py:108
+#: apps/users/models.py:106
 msgid "date joined"
-msgstr ""
-
-#: apps/users/models.py:118
-msgid "User"
-msgstr ""
+msgstr "дата регистрации"
 
 #: apps/users/models.py:119
 msgid "Users"
-msgstr ""
+msgstr "Пользователи"
 
-#: apps/users/models.py:132
+#: apps/users/models.py:131
 msgid "email address"
-msgstr ""
+msgstr "адрес электронной почты"
 
-#: apps/users/models.py:134
+#: apps/users/models.py:133
 msgid "This email address is already in use."
-msgstr ""
+msgstr "Этот адрес электронной почты уже используется."
 
-#: apps/users/models.py:140
+#: apps/users/models.py:139
 msgid "user"
-msgstr ""
+msgstr "пользователь"
 
-#: apps/users/models.py:143
+#: apps/users/models.py:142
 msgid "verified"
-msgstr ""
+msgstr "подтверждён"
 
-#: apps/users/models.py:145
+#: apps/users/models.py:144
 msgid "Indicates whether the email address has been verified."
-msgstr ""
-
-#: apps/users/models.py:147
-msgid "created at"
-msgstr ""
+msgstr "Указывает, подтверждён ли адрес электронной почты."
 
 #: apps/users/models.py:150
 msgid "User email"
-msgstr ""
+msgstr "Email пользователя"
 
 #: apps/users/models.py:151
 msgid "User emails"
-msgstr ""
-
-#: apps/users/models.py:170
-msgid "This email is already verified by another user."
-msgstr ""
+msgstr "Email пользователей"

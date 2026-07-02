@@ -1,68 +1,60 @@
-#!/bin/bash
+#!/usr/bin/env bash
+#
+# Create a timestamped backup under ./dumps/<ts>/:
+#   database.sql.gz  — full pg_dump (gzipped, --clean --if-exists)
+#   manifest.json    — media base URL + object counts (used to rewrite URLs on restore)
+#   media.tar.gz     — all S3/MinIO media objects (only with the "media" argument)
+#
+# Media lives in S3/MinIO (not on the container filesystem), so it is dumped THROUGH
+# the app with `manage.py media_dump`, not by tarring a local directory.
+#
+# Usage:
+#   make dump                 # database + manifest
+#   make dump media           # + media dump from S3/MinIO (slower; downloads the bucket)
+#   make dev dump media       # same, dev stack
+#   ./scripts/dump_all.sh [media]
+#
+set -euo pipefail
+cd "$(dirname "$0")/.."
 
-DUMPS_BASE_DIR="dumps"
-TIMESTAMP=$(date +"%Y-%m-%d_%H-%M-%S")
-DUMP_DIR="$DUMPS_BASE_DIR/${TIMESTAMP}"
-DB_CONTAINER="db"
-BACKEND_CONTAINER="backend"
+COMPOSE="${COMPOSE:-docker compose}"
+EXEC="${EXEC:-}"   # extra `docker compose exec` flags (e.g. --workdir /app/backend for the dev stack)
 
-# Load environment variables
+WITH_MEDIA=0
+for arg in "$@"; do
+  case "$arg" in
+    media | --media) WITH_MEDIA=1 ;;
+  esac
+done
+
+ENV_FILE="./.env"
+if [ ! -f "$ENV_FILE" ]; then
+  echo "Error: $ENV_FILE not found (needed for Postgres credentials)." >&2
+  exit 1
+fi
 set -a
-source "$(dirname "$0")/../.env"
+. "$ENV_FILE"
 set +a
+: "${POSTGRES_USER:?POSTGRES_USER is not set in .env}"
+: "${POSTGRES_DB:?POSTGRES_DB is not set in .env}"
 
-DB_DUMP_FILE="${DUMP_DIR}/backup.sql"
-MEDIA_FILES_TAR="${DUMP_DIR}/media_backup.tar.gz"
+TS="$(date +%Y-%m-%d_%H-%M-%S)"
+DIR="dumps/${TS}"
+mkdir -p "$DIR"
+echo "→ Backing up to ${DIR}"
 
-DOCKER_DB_DUMP_FILE="/tmp/backup_${TIMESTAMP}.sql"
-DOCKER_MEDIA_TAR_FILE="/tmp/media_files_${TIMESTAMP}.tar.gz"
+echo "  • database…"
+$COMPOSE exec -T db pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+  --clean --if-exists --no-owner --no-privileges \
+  | gzip >"$DIR/database.sql.gz"
 
-echo "Creating dump directory: ${DUMP_DIR}"
-mkdir -p "$DUMP_DIR"
+echo "  • manifest…"
+$COMPOSE exec -T $EXEC backend python manage.py media_info >"$DIR/manifest.json"
 
-echo "Creating database dump inside '${DB_CONTAINER}' container..."
-docker compose exec -T "$DB_CONTAINER" pg_dump \
-    -U "$POSTGRES_USER" \
-    --no-owner \
-    --no-acl \
-    -F c \
-    -b \
-    -f "$DOCKER_DB_DUMP_FILE" \
-    "$POSTGRES_DB"
-
-if [ $? -ne 0 ]; then
-    echo "Error: database dump failed!"
-    exit 1
+if [ "$WITH_MEDIA" -eq 1 ]; then
+  echo "  • media from S3/MinIO (this can take a while)…"
+  $COMPOSE exec -T $EXEC backend python manage.py media_dump >"$DIR/media.tar.gz"
 fi
 
-echo "Copying database dump to host..."
-docker compose cp "${DB_CONTAINER}:${DOCKER_DB_DUMP_FILE}" "$DB_DUMP_FILE" || {
-    echo "Error: failed to copy database dump!"
-    exit 1
-}
-
-docker compose exec -T "$DB_CONTAINER" rm "$DOCKER_DB_DUMP_FILE"
-
-echo "Database dump saved: $DB_DUMP_FILE"
-
-# -------------- Django media files dump --------------
-
-echo "Archiving Django media files from '${BACKEND_CONTAINER}:/app/media'..."
-docker compose exec -T "$BACKEND_CONTAINER" tar -czf "$DOCKER_MEDIA_TAR_FILE" -C /app media
-
-if [ $? -ne 0 ]; then
-    echo "Error: media files archiving failed!"
-    exit 1
-fi
-
-echo "Copying media archive to host..."
-docker compose cp "${BACKEND_CONTAINER}:${DOCKER_MEDIA_TAR_FILE}" "$MEDIA_FILES_TAR" || {
-    echo "Error: failed to copy media archive!"
-    exit 1
-}
-
-docker compose exec -T "$BACKEND_CONTAINER" rm "$DOCKER_MEDIA_TAR_FILE"
-
-echo "Django media archive saved: $MEDIA_FILES_TAR"
-
-echo "Backup completed successfully!"
+echo "✓ Backup complete:"
+du -sh "$DIR"/* 2>/dev/null || true

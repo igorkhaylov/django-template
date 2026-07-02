@@ -1,5 +1,4 @@
 import logging
-import uuid
 
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.contrib.auth.models import PermissionsMixin
@@ -12,7 +11,7 @@ from django.utils.translation import gettext_lazy as _
 from stdimage.models import StdImageField
 
 from common.generators import generate_random_username
-from common.models import UIDMixin
+from common.models import TimestampMixin, UIDMixin
 
 logger = logging.getLogger(__name__)
 
@@ -50,13 +49,21 @@ class CustomUserManager(BaseUserManager):
         )
 
     def get_by_natural_key(self, username_or_email):
-        """Authenticate user by username or any associated email."""
+        """Authenticate by username, or by a VERIFIED associated email.
+
+        Only verified emails are valid natural keys. The unique constraint on
+        ``UserEmail.email`` is partial (``is_verified=True``), so several *unverified*
+        rows may share one address. Filtering on ``is_verified=True`` and using
+        ``.first()`` therefore avoids both ``MultipleObjectsReturned`` and letting a
+        user log in via an unverified (possibly attacker-created) email.
+        """
         if "@" in username_or_email:
-            try:
-                email_obj = UserEmail.objects.get(email=username_or_email)
-                return email_obj.user
-            except UserEmail.DoesNotExist:
-                pass
+            user = self.filter(
+                emails__email__iexact=username_or_email,
+                emails__is_verified=True,
+            ).first()
+            if user is not None:
+                return user
         return self.get(username=username_or_email)
 
 
@@ -80,7 +87,7 @@ class User(UIDMixin, AbstractBaseUser, PermissionsMixin):
     name = models.CharField(_("Name"), max_length=150, blank=True)
 
     date_of_birth = models.DateField(_("Date of birth"), blank=True, null=True)
-    gender = models.CharField(_("Gender"), choices=GenderChoices.choices, max_length=6, blank=True, null=True)
+    gender = models.CharField(_("Gender"), choices=GenderChoices.choices, max_length=6, blank=True)
 
     picture = StdImageField(_("Photo"), upload_to="users/%Y/%m/%d/", blank=True, null=True)
 
@@ -89,11 +96,15 @@ class User(UIDMixin, AbstractBaseUser, PermissionsMixin):
         default=False,
         help_text=_("Designates whether the user can log into this admin site."),
     )
+    # NOTE: defaults to False, so a new regular user CANNOT log in until activated.
+    # create_superuser forces is_active=True; the intended activation trigger for normal
+    # users is OTP/email verification (see the TODO on UserEmail). Flip the default to
+    # True if you want activate-on-create instead.
     is_active = models.BooleanField(
         _("Active"),
         default=False,
         help_text=_(
-            "Designates whether this user should be treated as active. " "Unselect this instead of deleting accounts."
+            "Designates whether this user should be treated as active. Unselect this instead of deleting accounts."
         ),
     )
     date_joined = models.DateTimeField(_("date joined"), default=timezone.now)
@@ -111,15 +122,14 @@ class User(UIDMixin, AbstractBaseUser, PermissionsMixin):
         verbose_name = _("User")
         verbose_name_plural = _("Users")
         swappable = "AUTH_USER_MODEL"
-        indexes = [
-            models.Index(fields=["uid"]),
-        ]
+        # `uid` is already unique + indexed via UIDMixin; no extra index needed.
 
 
-class UserEmail(models.Model):
-    """Stores email addresses associated with a user."""
+class UserEmail(UIDMixin, TimestampMixin):
+    """Stores email addresses associated with a user.
 
-    uid = models.UUIDField(default=uuid.uuid4, editable=False)
+    Inherits ``uid`` (UIDMixin) and ``created_at``/``updated_at`` (TimestampMixin).
+    """
 
     email = models.EmailField(
         _("email address"),
@@ -137,11 +147,13 @@ class UserEmail(models.Model):
         default=False,
         help_text=_("Indicates whether the email address has been verified."),
     )
-    created_at = models.DateTimeField(_("created at"), default=timezone.now)
 
+    # Concrete Meta (not inheriting TimestampMixin.Meta) so the model is unambiguously
+    # non-abstract; ordering is restated explicitly.
     class Meta:
         verbose_name = _("User email")
         verbose_name_plural = _("User emails")
+        ordering = ("-created_at", "-id")
         constraints = [
             models.UniqueConstraint(
                 fields=["email"],
@@ -149,6 +161,11 @@ class UserEmail(models.Model):
                 name="unique_verified_email",
             ),
         ]
+        # Indexes the email lookup used by get_by_natural_key (incl. the unverified path).
+        indexes = [models.Index(fields=["email"])]
+
+    # TODO(OTP): on OTP confirmation, set is_verified=True here and activate the owning
+    # user (user.is_active = True). Activation flow is not implemented yet.
 
     def __str__(self):
         return f"{self.email} ({'verified' if self.is_verified else 'unverified'})"

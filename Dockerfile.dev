@@ -1,33 +1,27 @@
+# syntax=docker/dockerfile:1
+#
+# Development image. The repo is bind-mounted at /app by docker-compose.dev.yml, so the
+# virtualenv lives at /opt/venv (OUTSIDE /app) to avoid being shadowed by the mount.
+# Includes the dev dependency group and basic tooling.
 FROM python:3.13-slim
-
-EXPOSE 8000
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    POETRY_VERSION=2.1.3 \
-    POETRY_VIRTUALENVS_CREATE=false
+    UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    UV_PYTHON_DOWNLOADS=0 \
+    UV_PROJECT_ENVIRONMENT=/opt/venv \
+    PATH="/opt/venv/bin:$PATH"
 
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    python3-dev \
-    libpq-dev \
-    gcc \
-    curl \
-    gettext \
-    git \
-    vim \
-    openssh-client \
-    && apt-get clean \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential python3-dev libpq-dev gcc git curl gettext \
     && rm -rf /var/lib/apt/lists/*
 
+RUN pip install --no-cache-dir uv
+
 WORKDIR /app
+COPY backend/pyproject.toml backend/uv.lock ./
+RUN uv sync --frozen
 
-RUN pip install --no-cache-dir "poetry==$POETRY_VERSION"
-
-RUN pip install --upgrade virtualenv
-
-COPY ./backend/pyproject.toml ./backend/poetry.lock ./
-
-RUN poetry install --no-root --with dev
-
+# Kept alive by docker-compose; run commands via `make dev <target>`.
 CMD ["sleep", "infinity"]

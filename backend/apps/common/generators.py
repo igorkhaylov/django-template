@@ -1,9 +1,8 @@
-import random
 import secrets
 import string
 from datetime import datetime, timedelta
 
-import dateutil
+from dateutil.relativedelta import relativedelta
 
 
 def generate_unique_string(length: int = 16) -> str:
@@ -12,14 +11,18 @@ def generate_unique_string(length: int = 16) -> str:
     return "".join(secrets.choice(alphabet) for _ in range(length))
 
 
-def generate_random_username(length=12):
-    characters = string.ascii_lowercase + string.digits
-    return "".join(random.choice(characters) for _ in range(length))
+def generate_random_username(length: int = 12) -> str:
+    alphabet = string.ascii_lowercase + string.digits
+    return "".join(secrets.choice(alphabet) for _ in range(length))
 
 
-def generate_random_verification_code(length=6):
-    max_int = int("9" * length)
-    return str(random.randint(100, max_int)).rjust(length, "0")
+def generate_random_verification_code(length: int = 6) -> str:
+    """Return a cryptographically secure zero-padded numeric code.
+
+    Covers the full 0..10**length-1 range (e.g. '000042' is possible) using the
+    ``secrets`` module — suitable for OTP / email-verification codes.
+    """
+    return str(secrets.randbelow(10**length)).rjust(length, "0")
 
 
 def generate_dates(start_date=None, count=31, step=1, unit="days"):
@@ -42,9 +45,9 @@ def generate_dates(start_date=None, count=31, step=1, unit="days"):
         elif unit == "weeks":
             next_date = dates[-1] + timedelta(weeks=step)
         elif unit == "months":
-            next_date = dates[-1] + dateutil.relativedelta.relativedelta(months=step)
+            next_date = dates[-1] + relativedelta(months=step)
         elif unit == "years":
-            next_date = dates[-1] + dateutil.relativedelta.relativedelta(years=step)
+            next_date = dates[-1] + relativedelta(years=step)
         else:
             raise ValueError("Unit must be 'days', 'weeks', 'months', or 'years'")
         dates.append(next_date)

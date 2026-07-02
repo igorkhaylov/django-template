@@ -12,7 +12,7 @@ class UserAdmin(AuthUserAdmin):
     fieldsets = (
         (None, {"fields": ("username", "password")}),
         (
-            _("Personal info2"),
+            _("Personal info"),
             {
                 "fields": (
                     "name",

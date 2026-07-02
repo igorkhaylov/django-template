@@ -1,3 +1,13 @@
+name: ${PROJECT_NAME:-django-template}-dev
+
+
+# Caps Docker's json-file logs so they can't fill the disk (default driver has no rotation).
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
 
 x-backend-defaults: &backend-defaults
   build:
@@ -5,18 +15,19 @@ x-backend-defaults: &backend-defaults
     dockerfile: ./Dockerfile.dev
   env_file:
     - ./.env
+  logging: *default-logging
+  # Lets the backend reach the shared host MinIO via host.docker.internal on Linux
+  # (no-op/automatic on Docker Desktop).
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
   volumes:
+    # The whole repo is mounted at /app; manage.py lives at /app/backend (see Makefile EXEC).
     - .:/app
-    - vscode-data:/root/.vscode-server
-    - vscode-cache:/root/.cache
-    - zed-data:/root/.local/share/zed
-    - ~/.ssh:/tmp/.host-ssh:ro
   depends_on:
     db:
       condition: service_healthy
     redis:
       condition: service_healthy
-
   command: sleep infinity
   restart: unless-stopped
 
@@ -29,12 +40,13 @@ services:
 
   redis:
     image: redis:8
+    logging: *default-logging
     expose:
       - 6379
     volumes:
       - redis-data:/data
     healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 3s
       retries: 5
       timeout: 3s
@@ -42,6 +54,7 @@ services:
 
   db:
     image: postgres:17.4
+    logging: *default-logging
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -51,15 +64,19 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: [ "CMD-SHELL", "sh -c 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}'" ]
-      # test: [ "CMD", "pg_isready", "-U", "${POSTGRES_USER}", "-d", "${POSTGRES_DB}" ]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 3s
       retries: 5
       timeout: 3s
     restart: unless-stopped
 
+  # NOTE: MinIO is a single SHARED host service, not a per-project container.
+  # Provision it once with `make minio` (./scripts/ensure_minio.sh). The backend
+  # reaches it via DJANGO_MINIO_ENDPOINT=http://host.docker.internal:9000.
+
   nginx:
     image: nginx:stable-alpine
+    logging: *default-logging
     volumes:
       - ./nginx/nginx.dev.conf:/etc/nginx/nginx.conf:ro
     ports:
@@ -73,6 +90,3 @@ services:
 volumes:
   postgres-data:
   redis-data:
-  vscode-data:
-  vscode-cache:
-  zed-data:
