@@ -20,10 +20,8 @@ msgstr ""
 "X-Translated-Using: django-rosetta 0.10.2\n"
 
 #: apps/users/admin.py:15
-#, fuzzy
-#| msgid "Personal info2"
 msgid "Personal info"
-msgstr "Personal info2"
+msgstr "Personal info"
 
 #: apps/users/admin.py:26
 msgid "Permissions"
