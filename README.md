@@ -286,14 +286,18 @@ then deploy by pulling it** (the server never builds).
   `latest` (default branch), `sha-<full-sha>` (every build), and `vX.Y.Z`/`X.Y.Z` (tags).
   Uses Buildx + GitHub Actions cache. No secrets needed beyond the built-in `GITHUB_TOKEN`
   (job has `packages: write`).
-- `.github/workflows/deploy.yml` — runs automatically after a successful build on `master`
-  (deploys the exact `sha-<full-sha>` just built), or manually with a chosen tag. A
+- `.github/workflows/deploy.yml` — after a successful build on `master`, deploys the exact
+  `sha-<full-sha>` just built **only if the repo variable `AUTO_DEPLOY` is `true`** (opt-in:
+  unset on the bare template, so the auto path is *skipped*, not failed). Manual
+  `workflow_dispatch` with a chosen tag always works. A
   GitHub-hosted runner **SSHes into the server**; the server logs in to GHCR, runs
   `git reset --hard` to the deployed commit (syncs compose + `nginx/nginx.conf`), then
   `docker compose -f docker-compose.prod.yml pull && up -d`. Uses GitHub **Environments**
   (`prod`/`dev`). Required secrets per environment: `SSH_HOST` / `SSH_USER` / `SSH_PORT` /
   `SSH_KEY` / `SSH_FINGERPRINT` / `DEPLOY_PATH` / `GHCR_USER` / `GHCR_PAT` (PAT with
-  `read:packages` only). The server keeps its own `./.env` (provisioned out-of-band; CI
+  `read:packages` only). Plus one repository **variable** `AUTO_DEPLOY=true` to opt into the
+  auto path (Settings → Secrets and variables → Actions → Variables); manual deploys need
+  only the secrets. The server keeps its own `./.env` (provisioned out-of-band; CI
   never touches it — an opt-in snippet to let CI write it is in the workflow).
 
 **GitLab CI** (`.gitlab-ci.yml`) — `test → build → deploy`:
