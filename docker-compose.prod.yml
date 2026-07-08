@@ -136,6 +136,56 @@ services:
           cpus: "1.0"
           memory: 1g
 
+  # Optional automated PostgreSQL backups (tiredofit/db-backup). DISABLED by default:
+  # it only starts when the "backup" compose profile is active. Enable it by setting
+  #   COMPOSE_PROFILES=backup
+  # in ./.env (then `make prod deploy` picks it up), or run it once with
+  #   docker compose -f docker-compose.prod.yml --profile backup up -d
+  #
+  # Scope: DATABASE ONLY. Media lives in S3/MinIO — back that up with bucket
+  # versioning/replication and/or `make dump media` (docs/backup.md). This service does
+  # NOT touch that tooling. Target + schedule + retention are all set in .env.
+  db-backup:
+    image: ${DB_BACKUP_IMAGE:-ghcr.io/tiredofit/docker-db-backup:4.1.100}
+    profiles: ["backup"]
+    logging: *default-logging
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # Connection — reuses the app's Postgres credentials.
+      DB01_TYPE: pgsql
+      DB01_HOST: db
+      DB01_PORT: "5432"
+      DB01_NAME: ${POSTGRES_DB}
+      DB01_USER: ${POSTGRES_USER}
+      DB01_PASS: ${POSTGRES_PASSWORD}
+      # Schedule + retention, in MINUTES. Defaults: back up every 24h, keep 7 days.
+      DB01_BACKUP_INTERVAL: ${DB_BACKUP_INTERVAL:-1440}
+      DB01_CLEANUP_TIME: ${DB_BACKUP_CLEANUP_TIME:-10080}
+      DB01_COMPRESSION: ${DB_BACKUP_COMPRESSION:-ZSTD}
+      # Where backups go: FILESYSTEM (default) or S3.
+      DB01_BACKUP_LOCATION: ${DB_BACKUP_LOCATION:-FILESYSTEM}
+      DB01_FILESYSTEM_PATH: /backup
+      # S3 target (used only when DB_BACKUP_LOCATION=S3). A dedicated bucket/prefix,
+      # independent of the app's DJANGO_MINIO_* media storage.
+      DB01_S3_BUCKET: ${DB_BACKUP_S3_BUCKET:-}
+      DB01_S3_PATH: ${DB_BACKUP_S3_PATH:-db-backups}
+      DB01_S3_REGION: ${DB_BACKUP_S3_REGION:-us-east-1}
+      DB01_S3_KEY_ID: ${DB_BACKUP_S3_KEY_ID:-}
+      DB01_S3_KEY_SECRET: ${DB_BACKUP_S3_KEY_SECRET:-}
+      DB01_S3_HOST: ${DB_BACKUP_S3_HOST:-}
+    volumes:
+      # Host path for FILESYSTEM backups — choose where dumps land. Unused (staging only)
+      # when backing up to S3.
+      - ${DB_BACKUP_FS_PATH:-./db-backups}:/backup
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256m
+
   # NOTE: object storage (MinIO / S3) is NOT part of this compose. In prod, point
   # DJANGO_MINIO_* at your managed MinIO / S3. Static and media are served from there,
   # so nginx needs NO static volume.
