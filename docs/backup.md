@@ -73,6 +73,44 @@ docker compose exec -T backend python manage.py rewrite_media_urls \
   --from https://old/bucket/ --to https://new/bucket/ --dry-run
 ```
 
+## Automated database backups (optional)
+
+The `make dump` flow above is **manual and on-demand**. For scheduled, retained,
+optionally offsite DB backups in production, `docker-compose.prod.yml` ships an optional
+`db-backup` service ([tiredofit/db-backup](https://github.com/tiredofit/docker-db-backup)),
+**disabled by default** behind the `backup` compose profile.
+
+**Scope: database only.** Media stays on the tooling above plus S3/MinIO bucket
+versioning/replication — this service never touches it.
+
+Enable it by activating the profile in `./.env`:
+
+```bash
+COMPOSE_PROFILES=backup      # then: make prod deploy
+# or one-off: docker compose -f docker-compose.prod.yml --profile backup up -d
+```
+
+Configure via `.env` (full list in `.env.example`). It reuses the app's `POSTGRES_*`
+credentials and connects to the `db` service:
+
+| Variable | Purpose | Default |
+|---|---|---|
+| `DB_BACKUP_INTERVAL` | minutes between backups | `1440` (24h) |
+| `DB_BACKUP_CLEANUP_TIME` | delete backups older than N minutes | `10080` (7d) |
+| `DB_BACKUP_LOCATION` | `FILESYSTEM` or `S3` | `FILESYSTEM` |
+| `DB_BACKUP_FS_PATH` | host path for filesystem dumps | `./db-backups` |
+| `DB_BACKUP_S3_BUCKET` / `_PATH` / `_HOST` / `_REGION` / `_KEY_ID` / `_KEY_SECRET` | S3 target (own bucket/prefix, separate from media) | — |
+
+**Restore** a produced dump (a compressed `pg_dump`) into the running database:
+
+```bash
+zstd -dc db-backups/<file>.sql.zst | \
+  docker compose -f docker-compose.prod.yml exec -T db psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+```
+
+**When to skip it:** on **managed Postgres** (RDS / Cloud SQL / …) use the provider's
+automated backups + PITR instead — this sidecar targets a self-hosted `db` container.
+
 ## Notes
 
 - `dumps/` is gitignored; move backups off the host (object storage, another server) for

@@ -29,6 +29,7 @@ htmlcov/
 
 # Backups & credentials
 dumps/
+db-backups/
 firebase_credentials/
 
 # OS / editor
