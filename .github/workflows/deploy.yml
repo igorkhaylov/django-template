@@ -5,13 +5,18 @@ name: Deploy
 # build-push.yml) and updates the stack via docker-compose.prod.yml — nothing is built.
 #
 # Runs automatically after "Build and push backend image" succeeds on master (deploys
-# the exact sha-<full-sha> that was just built), or manually with a chosen tag.
+# the exact sha-<full-sha> that was just built) — but ONLY when the repo variable
+# AUTO_DEPLOY is "true". Otherwise the auto path is skipped; deploy manually with a
+# chosen tag via workflow_dispatch (which always works).
 #
 # Per-environment secrets live in GitHub Environments (prod / dev). Required secrets:
 #   SSH_HOST  SSH_USER  SSH_PORT  SSH_KEY          — connection (dedicated deploy keypair)
 #   SSH_FINGERPRINT                                — server host-key SHA256 (host-key pinning)
 #   DEPLOY_PATH                                    — path to the repo checkout on the server
 #   GHCR_USER  GHCR_PAT                            — GitHub user + PAT with `read:packages` only
+#
+# Required repository VARIABLE (Settings > Secrets and variables > Actions > Variables):
+#   AUTO_DEPLOY = true   — opt in to deploy-on-merge. Unset => manual-only (the default).
 #
 # The server holds a git checkout at DEPLOY_PATH (provides docker-compose.prod.yml +
 # nginx/nginx.conf) and its own ./.env (provisioned out-of-band; NOT created by CI —
@@ -44,10 +49,14 @@ concurrency:
 
 jobs:
   deploy:
-    # On the auto path, only deploy if the image build actually succeeded.
+    # Auto path (workflow_run) is opt-in: enable deploy-on-merge by setting the repo
+    # variable AUTO_DEPLOY=true. Unset (e.g. the bare template) => the job is skipped,
+    # not failed, and the environment is never entered. `vars` — unlike `secrets` — is
+    # allowed in `if`. Manual workflow_dispatch always runs; the success check keeps the
+    # auto path from deploying a broken build.
     if: >-
       github.event_name == 'workflow_dispatch' ||
-      github.event.workflow_run.conclusion == 'success'
+      (vars.AUTO_DEPLOY == 'true' && github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
     environment: ${{ github.event.inputs.environment || 'prod' }}
     steps:
