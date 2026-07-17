@@ -1,4 +1,5 @@
 # Usage:
+#   make init               # FIRST RUN: .env + generated secrets, MinIO bucket, dev stack, migrate
 #   make dev up             # start the development stack (containers up; backend idle)
 #   make dev run            # run the Django dev server (autoreload) — reach it at APP_PORT
 #   make up                 # local production-like stack (builds + serves via gunicorn)
@@ -31,12 +32,27 @@ endif
 # Extra args: MAKECMDGOALS minus "dev"/"prod" and the target name ($@).
 ARGS = $(filter-out dev prod $@,$(MAKECMDGOALS))
 
-.PHONY: help dev prod up run down down-v build pull deploy logs shell dbshell migrate \
-        makemigrations makemessages compilemessages collectstatic createsuperuser \
-        test lint format pre-commit-install minio flush-redis dump restore \
-        bash bash-db bash-nginx
+# Every real target — used for .PHONY and for the typo guard below.
+KNOWN_TARGETS := help init up run down down-v build pull deploy logs shell dbshell \
+        migrate makemigrations makemessages compilemessages collectstatic \
+        createsuperuser test lint format pre-commit-install minio flush-redis \
+        dump restore bash bash-db bash-nginx
+
+.PHONY: dev prod $(KNOWN_TARGETS)
+
+# Typo guard: the first goal after the dev/prod prefix must be a real target. Without
+# this the catch-all `%:` at the bottom silently swallows typos (`make dev migrat`
+# would exit 0 doing nothing). Extra words AFTER a real target (`make logs backend`,
+# `make restore dumps/<ts>`) still pass through the catch-all as arguments.
+PRIMARY_GOAL := $(firstword $(filter-out dev prod,$(MAKECMDGOALS)))
+ifneq ($(PRIMARY_GOAL),)
+  ifeq ($(filter $(PRIMARY_GOAL),$(KNOWN_TARGETS)),)
+    $(error Unknown target '$(PRIMARY_GOAL)' — run 'make help' for the list)
+  endif
+endif
 
 help:
+	@echo "First run:   make init    # .env + generated secrets, MinIO bucket, dev stack, migrate"
 	@echo "Prefix a target with 'dev' (development) or 'prod' (pull-based deploy):"
 	@echo "  dev up      then  dev run        # start stack, then serve (autoreload) at APP_PORT"
 	@echo "  up / down / down-v / build / logs [service]"
@@ -51,6 +67,22 @@ dev:
 
 prod:
 	@:
+
+# --- First-time setup ---
+# One command from a fresh clone to a migrated dev stack: create .env with generated
+# secrets (never overwrites an existing one), provision the shared MinIO bucket, start
+# the DEV stack and apply migrations. Targets the dev compose explicitly, so no `dev`
+# prefix is needed. Safe to re-run. Then: `make dev createsuperuser`, `make dev run`.
+DEV_COMPOSE := docker compose -f docker-compose.dev.yml
+init:
+	./scripts/init_env.sh
+	./scripts/ensure_minio.sh
+	$(DEV_COMPOSE) up -d --build
+	$(DEV_COMPOSE) exec --workdir /app/backend backend python manage.py migrate
+	@echo ""
+	@echo "Done. Next steps:"
+	@echo "  make dev createsuperuser    # create your admin account"
+	@echo "  make dev run                # dev server -> http://localhost:8050 (APP_PORT)"
 
 # --- Docker lifecycle ---
 up:
