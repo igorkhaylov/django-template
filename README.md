@@ -28,7 +28,7 @@ storage) and Nginx, fully containerized with Docker Compose and managed with **u
 │   ├── scripts/             # Container entrypoints
 │   ├── tests/               # pytest suite (minimal-config, no external services)
 │   └── pyproject.toml
-├── docs/                    # uv.md, stdimage.md
+├── docs/                    # uv.md · stdimage.md · backup.md · deploy.md
 ├── minio/                   # MinIO access policies (used by scripts/ensure_minio.sh)
 ├── nginx/                   # nginx.conf (prod) / nginx.dev.conf
 ├── scripts/                 # Host-level helpers: ensure_minio.sh, dump/restore
@@ -63,31 +63,45 @@ Static and media are served by **S3/MinIO**, not by Nginx.
 
 ## First-time setup
 
+**Quick start — one command:**
+
+```bash
+make init                   # .env + generated secrets → MinIO bucket → dev stack → migrate
+make dev createsuperuser
+make dev run                # → http://localhost:8050
+```
+
+`make init` never overwrites an existing `.env` and is safe to re-run. Steps 1–4 below
+describe what it automates (and the manual path).
+
 ### 1. Configure environment
 
 ```bash
-cp .env.example .env
-# Edit .env — change every CHANGE_ME. In stage/prod, DJANGO_SECRET_KEY must be a
-# strong, explicit value (>= 50 chars): openssl rand -hex 64
+cp .env.example .env        # `make init` does this for you, generating every CHANGE_ME
+# Edit .env if needed. In stage/prod, DJANGO_SECRET_KEY must be a strong, explicit
+# value (>= 50 chars): openssl rand -hex 64
 ```
 
 `ENVIRONMENT` must be one of `dev | test | stage | prod` (validated at startup —
 an unrecognized value raises instead of silently running insecurely). `DEBUG` and all
 security flags are derived from it.
 
-### 2. Create the initial migrations (important)
+### 2. Apply migrations
 
-This template **ships without user migrations on purpose**. The default `User`/`UserEmail`
-models are a starting point — adjust them to your project *first*, then generate the
-initial migration so you don't accumulate throwaway migrations later.
+The initial migration for the default `User`/`UserEmail` models **ships with the
+template** (`backend/apps/users/migrations/0001_initial.py`), so a fresh clone migrates
+and boots out of the box:
 
 ```bash
 make dev up                 # start the dev stack
-make dev makemigrations     # generate migrations for your (adjusted) models
-make dev migrate            # apply them
+make dev migrate            # apply migrations (`make init` does this for you)
 ```
 
-> If you skip this, `migrate` has nothing to create and the app can't store users.
+Adjusting the user models to your project? Edit them and generate a follow-up migration
+as usual (`make dev makemigrations`). If you prefer your project to start from a single
+clean initial migration instead, delete `0001_initial.py`, regenerate it with
+`make dev makemigrations`, and reset the dev database (`make dev down-v`) before
+applying — do this before your first release, not after.
 
 > **`User.is_active` defaults to `False`.** Only superusers are active out of the box, so
 > a newly created regular user **cannot log in** until something sets `is_active=True`
@@ -95,7 +109,7 @@ make dev migrate            # apply them
 > [`users/models.py`](backend/apps/users/models.py)). Create your admin with
 > `make dev createsuperuser`; decide your activation flow before shipping user signup.
 
-### 3. Provision object storage (manual, one-off)
+### 3. Provision object storage (one-off; `make init` runs this)
 
 Object storage is **not** part of the compose stack. Locally it's a single **shared**
 MinIO container on your host, reused by every project (no per-project MinIO):
@@ -147,6 +161,17 @@ image and pushes it to a container registry; the server only **pulls** it.
 # On the server (needs: docker-compose.prod.yml + ./.env + ./nginx/nginx.conf):
 make prod deploy   # = docker compose -f docker-compose.prod.yml pull && up -d
 ```
+
+> **Before any manual `make prod deploy`** the server must be logged in to the registry —
+> GHCR packages are private by default, so an anonymous `pull` fails:
+>
+> ```bash
+> echo "$GHCR_PAT" | docker login ghcr.io -u <github-username> --password-stdin
+> ```
+>
+> `GHCR_PAT` is a **classic** Personal Access Token with the `read:packages` scope only.
+> How to create it — and the full zero-to-first-deploy server runbook — is in
+> [docs/deploy.md](docs/deploy.md).
 
 `docker-compose.prod.yml` runs `image: ${BACKEND_IMAGE}` (no `build:`). Set `BACKEND_IMAGE`
 in `.env` — pin a reproducible build by sha, e.g.
@@ -210,8 +235,8 @@ and `user_id` (via `RequestMiddleware`).
 
 The suite runs in a **minimal configuration** (`config.settings.test`): sqlite in-memory,
 locmem cache/email, eager Celery, in-memory storage — **no Postgres/Redis/MinIO required**.
-pytest is configured with `--no-migrations`, so it works even before you create your
-initial migrations.
+pytest is configured with `--no-migrations`: the schema is built directly from the
+models, so the suite is independent of migration state.
 
 ```bash
 make dev test               # in the dev container
@@ -271,14 +296,15 @@ See [docs/backup.md](docs/backup.md) for the full design.
 
 ## Adapting this template
 
-1. **Adjust the `users` models** to your needs, then create the initial migration (step 2 above).
+1. **Adjust the `users` models** to your needs, then update the migrations (step 2 above).
 2. `docker-compose.yml` / `.env` — set the compose name, ports and all `CHANGE_ME` values.
 3. Point your edge reverse proxy at the `nginx` service.
 
 ## CI/CD
 
 Both platforms follow the same model: **build & push the backend image to a registry,
-then deploy by pulling it** (the server never builds).
+then deploy by pulling it** (the server never builds). Step-by-step server setup and
+first deploy: [docs/deploy.md](docs/deploy.md).
 
 **GitHub Actions**
 - `.github/workflows/build-push.yml` — on push to `master` and on `v*` tags (or manual):
