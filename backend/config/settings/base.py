@@ -151,6 +151,15 @@ DATABASES = {
         "PASSWORD": config("POSTGRES_PASSWORD", default="app"),
         "HOST": config("POSTGRES_HOST", default="db"),
         "PORT": config("POSTGRES_PORT", default="5432"),
+        # Persistent connections: Postgres forks a backend process per connection, so
+        # reconnecting on every request costs CPU + latency under load. The value is a
+        # TTL (recycle age), not a check interval. Set to 0 when running behind an
+        # external pooler (pgbouncer in transaction mode) — the two pools conflict.
+        "CONN_MAX_AGE": config("POSTGRES_CONN_MAX_AGE", default=600, cast=int),
+        # Ping a reused connection at the start of each request, so a connection that
+        # died while idle (db restart, network blip) reconnects silently instead of
+        # serving a one-off 500. Only meaningful with CONN_MAX_AGE > 0.
+        "CONN_HEALTH_CHECKS": True,
     }
 }
 
