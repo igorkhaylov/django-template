@@ -173,7 +173,9 @@ REDIS_PORT = config("REDIS_PORT", default=6379, cast=int)
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.redis.RedisCache",
-        "LOCATION": f"redis://{REDIS_HOST}:{REDIS_PORT}",
+        # db 1: Celery's broker + results live in db 0 (config/celery.py). Separate dbs
+        # let `make flush-cache` wipe the cache without touching queued tasks.
+        "LOCATION": f"redis://{REDIS_HOST}:{REDIS_PORT}/1",
         "TIMEOUT": 600,
     }
 }

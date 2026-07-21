@@ -35,8 +35,8 @@ ARGS = $(filter-out dev prod $@,$(MAKECMDGOALS))
 # Every real target — used for .PHONY and for the typo guard below.
 KNOWN_TARGETS := help init up run down down-v build pull deploy logs shell dbshell \
         migrate makemigrations makemessages compilemessages collectstatic \
-        createsuperuser test lint format pre-commit-install minio flush-redis \
-        dump restore bash bash-db bash-nginx
+        createsuperuser test lint format pre-commit-install minio flush-cache \
+        flush-redis dump restore bash bash-db bash-nginx
 
 .PHONY: dev prod $(KNOWN_TARGETS)
 
@@ -60,7 +60,7 @@ help:
 	@echo "  shell dbshell bash bash-db bash-nginx"
 	@echo "  migrate makemigrations makemessages compilemessages collectstatic createsuperuser"
 	@echo "  test lint format pre-commit-install"
-	@echo "  minio flush-redis dump restore"
+	@echo "  minio flush-cache flush-redis dump restore"
 
 dev:
 	@:
@@ -162,6 +162,12 @@ minio:
 	./scripts/ensure_minio.sh
 
 # --- Utilities ---
+# Redis layout: db 0 = Celery broker + task results, db 1 = Django cache.
+# flush-cache is the safe everyday command; flush-redis wipes EVERYTHING — including
+# queued Celery tasks — so reach for it deliberately.
+flush-cache:
+	$(COMPOSE) exec redis redis-cli -n 1 FLUSHDB
+
 flush-redis:
 	$(COMPOSE) exec redis redis-cli FLUSHALL
 
