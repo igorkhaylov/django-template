@@ -5,37 +5,41 @@ description = ""
 authors = [{ name = "igorkhaylov" }]
 requires-python = ">=3.13,<4"
 dependencies = [
-    "django>=5.2.4,<6.0.0",
-    "psycopg[binary]>=3.2.9,<4.0.0",
-    "pillow>=11.3.0,<12.0.0",
+    # Django 5.2 is LTS (supported until 04/2028); the <6 cap is deliberate — moving to 6.x
+    # is a separate decision because of the third-party ecosystem (modeltranslation, stdimage fork).
+    "django>=5.2.17,<6.0.0",
+    "psycopg[binary]>=3.3.4,<4.0.0",
+    "pillow>=12.3.0,<13.0.0",
     "python-decouple>=3.8,<4.0",
-    "django-cors-headers>=4.7.0,<5.0.0",
-    "djangorestframework>=3.16.0,<4.0.0",
-    "gunicorn>=23.0.0,<24.0.0",
-    "setproctitle>=1.3.6,<2.0.0",
-    "firebase-admin>=7.1.0,<8.0.0",
-    "django-rosetta>=0.10.2,<0.11.0",
-    "django-modeltranslation>=0.19.17,<0.20.0",
-    "drf-spectacular>=0.28.0,<0.29.0",
-    "django-filter>=25.1,<26.0",
+    "django-cors-headers>=4.9.0,<5.0.0",
+    "djangorestframework>=3.18.0,<4.0.0",
+    "gunicorn>=26.0.0,<27.0.0",
+    "setproctitle>=1.3.7,<2.0.0",
+    "firebase-admin>=7.5.0,<8.0.0",
+    "django-rosetta>=0.10.3,<0.11.0",
+    "django-modeltranslation>=0.20.3,<0.21.0",
+    "drf-spectacular>=0.30.0,<0.31.0",
+    "django-filter>=26.1,<27.0",
     "python-dateutil>=2.9.0.post0,<3.0.0",
+    # redis-py 7+/8+ exists, but kombu's redis transport requires redis<6.5; the [redis]
+    # extra on celery below makes the resolver enforce that, so this range stays wide.
     "redis>=6.4.0,<7.0.0",
-    "celery>=5.5.3,<6.0.0",
+    "celery[redis]>=5.6.3,<6.0.0",
     "django-storages[s3]>=1.14.6,<2.0.0",
     "django-cleanup>=9.0.0,<10.0.0",
-    "django-structlog>=8.1.0,<10.0.0",
-    "structlog>=24.1.0",
+    "django-structlog>=10.1.0,<11.0.0",
+    "structlog>=26.1.0",
     "django-stdimage @ git+https://github.com/igorkhaylov/django-stdimage.git@v1.0.2",
 ]
 
 [dependency-groups]
 dev = [
-    "pytest>=8.4.1",
-    "pytest-django>=4.9.0",
-    "django-debug-toolbar>=6.0.0",
-    "ruff>=0.8.0",
-    "pre-commit>=4.0.0",
-    "pyright>=1.1.408",
+    "pytest>=9.1.1",
+    "pytest-django>=4.13.0",
+    "django-debug-toolbar>=7.0.0",
+    "ruff>=0.16.2",
+    "pre-commit>=4.6.1",
+    "pyright>=1.1.411",
 ]
 
 # This project is an application, not a distributable package: uv only manages the
