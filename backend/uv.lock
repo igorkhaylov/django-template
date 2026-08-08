@@ -77,7 +77,7 @@ requires-dist = [
     { name = "django-filter", specifier = ">=26.1,<27.0" },
     { name = "django-modeltranslation", specifier = ">=0.20.3,<0.21.0" },
     { name = "django-rosetta", specifier = ">=0.10.3,<0.11.0" },
-    { name = "django-stdimage", git = "https://github.com/igorkhaylov/django-stdimage.git?rev=v1.0.2" },
+    { name = "django-stdimage", git = "https://github.com/igorkhaylov/django-stdimage.git?rev=v1.1.0" },
     { name = "django-storages", extras = ["s3"], specifier = ">=1.14.6,<2.0.0" },
     { name = "django-structlog", specifier = ">=10.1.0,<11.0.0" },
     { name = "djangorestframework", specifier = ">=3.18.0,<4.0.0" },
@@ -555,7 +555,7 @@ wheels = [
 [[package]]
 name = "django-stdimage"
 version = "6.1.0"
-source = { git = "https://github.com/igorkhaylov/django-stdimage.git?rev=v1.0.2#6e0218046a33c1d3bf2ff9d577b2efb66c9d93cf" }
+source = { git = "https://github.com/igorkhaylov/django-stdimage.git?rev=v1.1.0#0adbbafef4e5c3d4c5e8194c1f07463a218556f2" }
 dependencies = [
     { name = "django" },
     { name = "pillow" },

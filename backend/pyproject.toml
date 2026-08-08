@@ -29,7 +29,7 @@ dependencies = [
     "django-cleanup>=9.0.0,<10.0.0",
     "django-structlog>=10.1.0,<11.0.0",
     "structlog>=26.1.0",
-    "django-stdimage @ git+https://github.com/igorkhaylov/django-stdimage.git@v1.0.2",
+    "django-stdimage @ git+https://github.com/igorkhaylov/django-stdimage.git@v1.1.0",
 ]
 
 [dependency-groups]
