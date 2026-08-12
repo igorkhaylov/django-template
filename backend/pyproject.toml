@@ -15,7 +15,6 @@ dependencies = [
     "djangorestframework>=3.18.0,<4.0.0",
     "gunicorn>=26.0.0,<27.0.0",
     "setproctitle>=1.3.7,<2.0.0",
-    "firebase-admin>=7.5.0,<8.0.0",
     "django-rosetta>=0.10.3,<0.11.0",
     "django-modeltranslation>=0.20.3,<0.21.0",
     "drf-spectacular>=0.30.0,<0.31.0",
@@ -30,6 +29,21 @@ dependencies = [
     "django-structlog>=10.1.0,<11.0.0",
     "structlog>=26.1.0",
     "django-stdimage @ git+https://github.com/igorkhaylov/django-stdimage.git@v1.1.0",
+]
+
+# Optional features ("extras"): NOT installed by default. firebase-admin alone drags in
+# ~28 transitive packages (~15 MB of wheels: grpcio, cryptography, the google-* stack),
+# so it only makes sense to pay that cost in projects that actually send pushes.
+# The code that needs it (apps/common/firebase.py) is inert until you opt in:
+#   locally:    uv sync --extra push
+#   in Docker:  add `--extra push` to EVERY `uv sync` invocation — both branches of the
+#               if/else in the Dockerfile builder stage AND the one in Dockerfile.dev
+#               (the dev container's venv is baked into its image, not synced from host)
+# The extra is resolved and pinned in uv.lock either way, so enabling it later
+# changes nothing about the rest of the dependency tree.
+[project.optional-dependencies]
+push = [
+    "firebase-admin>=7.5.0,<8.0.0",
 ]
 
 [dependency-groups]
