@@ -31,6 +31,10 @@ htmlcov/
 dumps/
 db-backups/
 firebase_credentials/
+*credentials*.json
+*service*account*.json
+*.pem
+*.key
 
 # OS / editor
 .DS_Store

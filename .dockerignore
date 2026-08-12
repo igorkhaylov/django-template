@@ -31,3 +31,13 @@ docs/
 .env.example
 .dockerignore
 .gitignore
+
+# Credentials — the runtime stage does `COPY backend/ .`, so anything matching these
+# patterns must never reach the build context or it gets baked into the pushed image.
+# A PUBLIC cert the image legitimately needs (e.g. a managed-Postgres CA bundle) must be
+# re-included with a negation line below these, e.g. `!backend/certs/ca.pem`.
+**/firebase_credentials/
+**/*credentials*.json
+**/*service*account*.json
+**/*.pem
+**/*.key
