@@ -1,9 +1,12 @@
 from datetime import date
 
+from django.core.exceptions import ValidationError
+
 import pytest
 
 from common.generators import generate_dates
 from common.utils import Base62
+from common.validators import FCM_TOKEN_MAX_LENGTH, validate_fcm_token
 
 
 class TestBase62:
@@ -29,6 +32,28 @@ class TestGenerateDates:
     def test_years(self):
         dates = generate_dates(start_date=date(2024, 2, 29), count=2, unit="years")
         assert dates[1] == date(2025, 2, 28)
+
+
+class TestValidateFcmToken:
+    def test_accepts_realistic_token(self):
+        # Real tokens are opaque printable-ASCII strings, typically `instance:APA91b...`.
+        validate_fcm_token("dJx3Kf9qR0m:APA91b" + "G7x_Qw-9" * 20)
+
+    @pytest.mark.parametrize(
+        "token",
+        [
+            "",
+            "a" * (FCM_TOKEN_MAX_LENGTH + 1),
+            "токен-не-ascii",
+            "with space",
+            "trailing-newline\n",
+            "tab\tinside",
+        ],
+    )
+    def test_rejects_garbage(self, token):
+        with pytest.raises(ValidationError) as exc_info:
+            validate_fcm_token(token)
+        assert exc_info.value.code == "invalid_fcm_token"
 
 
 @pytest.mark.django_db
