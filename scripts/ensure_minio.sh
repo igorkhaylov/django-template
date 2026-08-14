@@ -35,6 +35,8 @@ MINIO_ROOT_USER="${MINIO_ROOT_USER:-minioadmin}"
 MINIO_ROOT_PASSWORD="${MINIO_ROOT_PASSWORD:-minioadmin}"
 MINIO_PORT="${MINIO_PORT:-9000}"
 MINIO_CONSOLE_PORT="${MINIO_CONSOLE_PORT:-9001}"
+# How long to wait for MinIO to answer before giving up with a diagnosis (seconds).
+MINIO_WAIT_TIMEOUT="${MINIO_WAIT_TIMEOUT:-60}"
 
 # Per-project resources to create on the shared MinIO.
 BUCKET="${MINIO_BUCKET_NAME:?MINIO_BUCKET_NAME is required}"
@@ -112,11 +114,24 @@ docker run --rm \
     -e "POLICY_NAME=${POLICY_NAME}" \
     -e "PUBLIC_POLICY=${PUBLIC_POLICY}" \
     -e "USER_POLICY=${USER_POLICY}" \
+    -e "CONTAINER_NAME=${CONTAINER_NAME}" \
+    -e "WAIT_TIMEOUT=${MINIO_WAIT_TIMEOUT}" \
     --entrypoint sh \
     "$MC_IMAGE" -c '
 set -e
-echo "  Waiting for MinIO at $MINIO_HOST ..."
+echo "  Waiting for MinIO at $MINIO_HOST (timeout: ${WAIT_TIMEOUT}s) ..."
+waited=0
 until mc alias set local "$MINIO_HOST" "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null 2>&1; do
+    waited=$((waited + 1))
+    if [ "$waited" -ge "$WAIT_TIMEOUT" ]; then
+        echo "" >&2
+        echo "ERROR: MinIO did not respond at $MINIO_HOST within ${WAIT_TIMEOUT}s." >&2
+        echo "A common cause: the container is running but its host port publishing is broken" >&2
+        echo "(happens on Docker Desktop after a restart/sleep). Diagnose and fix:" >&2
+        echo "  docker port $CONTAINER_NAME     # empty output = broken port publishing" >&2
+        echo "  docker rm -f $CONTAINER_NAME && make minio   # recreate (data volume is kept)" >&2
+        exit 1
+    fi
     sleep 1
 done
 
