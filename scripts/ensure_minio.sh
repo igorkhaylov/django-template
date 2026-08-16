@@ -27,7 +27,9 @@ fi
 
 # --- Configuration (with local-dev defaults) ---------------------------------
 CONTAINER_NAME="${MINIO_CONTAINER_NAME:-minio}"
-IMAGE="${MINIO_IMAGE:-pgsty/minio:RELEASE.2026-04-17T00-00-00Z}"
+# SILO is the renamed continuation of the pgsty/minio fork — same S3 API, same MINIO_*
+# env vars, same `server /data` arguments, so it is a drop-in swap for the old image.
+IMAGE="${MINIO_IMAGE:-pgsty/silo:RELEASE.2026-08-06T00-00-00Z}"
 MC_IMAGE="${MINIO_MC_IMAGE:-minio/mc:latest}"
 VOLUME_NAME="${MINIO_VOLUME_NAME:-minio-data}"
 
