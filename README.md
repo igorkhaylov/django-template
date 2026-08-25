@@ -126,9 +126,33 @@ This script:
   changed `MINIO_ROOT_USER`/`MINIO_ROOT_PASSWORD` away from the `minioadmin` defaults) —
   in that case provision the bucket on your provider instead.
 
-The backend reaches it via `DJANGO_MINIO_ENDPOINT` (default
-`http://host.docker.internal:9000` — the host-published shared MinIO). Admin
-credentials default to `minioadmin` / `minioadmin`.
+Admin credentials default to `minioadmin` / `minioadmin`.
+
+#### Endpoint vs. public URL
+
+Storage has **two** addresses, and mixing them up is the classic source of "uploads work
+but images 404":
+
+| Variable | Used by | Purpose | Example |
+|---|---|---|---|
+| `DJANGO_MINIO_ENDPOINT` | the backend, server-side | S3 API — uploads, `collectstatic`, dumps | `http://host.docker.internal:9000` |
+| `DJANGO_MINIO_CUSTOM_URL` | the browser | prefix of every media/static link | `http://localhost:9000` |
+
+`DJANGO_MINIO_CUSTOM_URL` is **scheme + host + port only** — the bucket path is appended
+for you from `DJANGO_MINIO_BUCKET_NAME`, so the link and the bucket can never drift apart:
+
+```
+DJANGO_MINIO_CUSTOM_URL=http://localhost:9000
+DJANGO_MINIO_BUCKET_NAME=my-bucket
+        →  http://localhost:9000/my-bucket/media/photo.jpg
+        →  http://localhost:9000/my-bucket/static/css/app.css
+```
+
+In production this is the **public** address of your storage, which is usually *not* the
+same host as `DJANGO_MINIO_ENDPOINT` (that one may be private/internal). The bucket stays
+in the public path, so an edge proxy or CDN in front of MinIO must pass it through
+unchanged — a plain pass-through matches, since the backend addresses MinIO path-style
+(`/<bucket>/<key>`) anyway.
 
 ### 4. Run the dev server
 
@@ -182,8 +206,10 @@ For a purely local production-like run that builds from source, `make up` still 
 (uses `docker-compose.yml`).
 
 Point `DJANGO_MINIO_*` at your managed MinIO / S3 (the `make minio` shared-local helper
-is for development). Behind your edge reverse proxy, point it at the `nginx` service
-(host port `APP_PORT`, default 8050).
+is for development) — note that `DJANGO_MINIO_CUSTOM_URL` is the **public** base URL of
+that storage, not the API endpoint (see [Endpoint vs. public URL](#endpoint-vs-public-url)).
+Behind your edge reverse proxy, point it at the `nginx` service (host port `APP_PORT`,
+default 8050).
 
 ## Dependency management (uv)
 
@@ -218,8 +244,8 @@ uv add --dev <package>      # add a dev dependency
 | `POSTGRES_*` | see `.env.example` | Database connection |
 | `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD` | `minioadmin` | Shared local MinIO admin; non-default ⇒ external storage, `make minio` skips |
 | `MINIO_BUCKET_NAME` / `MINIO_APP_USER` / `MINIO_APP_PASSWORD` | — | This project's bucket/user, created by `make minio` |
-| `DJANGO_MINIO_ENDPOINT` | `http://host.docker.internal:9000` | Endpoint the backend uses (shared host MinIO, or your S3) |
-| `DJANGO_MINIO_CUSTOM_URL` | `http://localhost:9000` | Public base URL for media/static |
+| `DJANGO_MINIO_ENDPOINT` | `http://host.docker.internal:9000` | Server-side S3 API endpoint (shared host MinIO, or your S3) |
+| `DJANGO_MINIO_CUSTOM_URL` | `http://localhost:9000` | Browser-facing base URL (scheme + host); the bucket is appended automatically — [details](#endpoint-vs-public-url) |
 
 All `DJANGO_MINIO_*` values have safe defaults so management commands, tests and CI can
 import settings without a full MinIO environment.
