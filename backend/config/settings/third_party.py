@@ -47,12 +47,14 @@ _minio_secret_key = config("DJANGO_MINIO_SECRET_KEY", default="minioadmin")
 _minio_bucket = config("DJANGO_MINIO_BUCKET_NAME", default="app-bucket")
 _minio_endpoint = config("DJANGO_MINIO_ENDPOINT", default="http://host.docker.internal:9000")  # shared host MinIO / S3
 
-# Public URL used to build media/static links. Parsed robustly so a missing/extra
-# "://" can't raise at import time.
+# Browser-facing base URL for media/static links: scheme + host only — the bucket is
+# appended below, so it can't drift from DJANGO_MINIO_BUCKET_NAME. A value with no "//"
+# ("localhost:9000") would parse as scheme "localhost", so normalize it to a
+# protocol-relative URL first; that also keeps a missing/extra "://" from raising here.
 _custom_url = config("DJANGO_MINIO_CUSTOM_URL", default="http://localhost:9000")
-_parsed = urlsplit(_custom_url)
+_parsed = urlsplit(_custom_url if "//" in _custom_url else f"//{_custom_url}")
 _protocol = _parsed.scheme or "http"
-_domain = _parsed.netloc or _parsed.path  # tolerate a bare "host:port" without scheme
+_domain = _parsed.netloc  # host[:port]; any path is dropped — an accidental bucket won't double up
 
 _s3_options = {
     "access_key": _minio_access_key,
