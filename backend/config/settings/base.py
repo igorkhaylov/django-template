@@ -48,6 +48,14 @@ ALLOWED_HOSTS = config(
     default="",
     cast=lambda v: [x for s in v.split(",") if (x := s.strip())],
 )
+# The container healthcheck (docker-compose*.yml) curls http://localhost:8000/healthcheck/
+# from INSIDE the container, and Django validates that Host header too. A prod .env that
+# lists only the public domain would therefore report every backend container unhealthy
+# — and nginx (depends_on: service_healthy) would never start. Always accept "localhost"
+# once hosts are configured; it is unreachable from outside the compose network. (An
+# empty list is left alone so DEBUG keeps Django's localhost/127.0.0.1 convenience.)
+if ALLOWED_HOSTS and "localhost" not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append("localhost")
 
 ROOT_URLCONF = "config.urls"
 WSGI_APPLICATION = "config.wsgi.application"
