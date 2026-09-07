@@ -5,7 +5,6 @@
 
 # Editor / tooling
 .vscode
-.zed
 .pre-commit-config.yaml
 
 # Python build noise (nested patterns so they match under backend/ too)

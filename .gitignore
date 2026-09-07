@@ -36,9 +36,10 @@ firebase_credentials/
 *.pem
 *.key
 
-# OS / editor
+# OS / editor (only .vscode/ is shared; per-editor dirs stay local)
 .DS_Store
 .idea/
+.zed/
 
 # Patch/tool backup artifacts
 *.orig
