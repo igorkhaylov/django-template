@@ -1,5 +1,5 @@
 # Usage:
-#   make init               # FIRST RUN: .env + generated secrets, MinIO bucket, dev stack, migrate
+#   make init               # FIRST RUN: .env + secrets, MinIO bucket, dev stack, migrate, collectstatic
 #   make dev up             # start the development stack (containers up; backend idle)
 #   make dev run            # run the Django dev server (autoreload) — reach it at APP_PORT
 #   make up                 # local production-like stack (builds + serves via gunicorn)
@@ -52,7 +52,7 @@ ifneq ($(PRIMARY_GOAL),)
 endif
 
 help:
-	@echo "First run:   make init    # .env + generated secrets, MinIO bucket, dev stack, migrate"
+	@echo "First run:   make init    # .env + secrets, MinIO bucket, dev stack, migrate, collectstatic"
 	@echo "Prefix a target with 'dev' (development) or 'prod' (pull-based deploy):"
 	@echo "  dev up      then  dev run        # start stack, then serve (autoreload) at APP_PORT"
 	@echo "  up / down / down-v / build / logs [service]"
@@ -71,14 +71,17 @@ prod:
 # --- First-time setup ---
 # One command from a fresh clone to a migrated dev stack: create .env with generated
 # secrets (never overwrites an existing one), provision the shared MinIO bucket, start
-# the DEV stack and apply migrations. Targets the dev compose explicitly, so no `dev`
-# prefix is needed. Safe to re-run. Then: `make dev createsuperuser`, `make dev run`.
+# the DEV stack, apply migrations and upload static files to the bucket (static is
+# served from S3/MinIO even in dev — without collectstatic the admin renders unstyled).
+# Targets the dev compose explicitly, so no `dev` prefix is needed. Safe to re-run.
+# Then: `make dev createsuperuser`, `make dev run`.
 DEV_COMPOSE := docker compose -f docker-compose.dev.yml
 init:
 	./scripts/init_env.sh
 	./scripts/ensure_minio.sh
 	$(DEV_COMPOSE) up -d --build
 	$(DEV_COMPOSE) exec --workdir /app/backend backend python manage.py migrate
+	$(DEV_COMPOSE) exec --workdir /app/backend backend python manage.py collectstatic --no-input
 	@echo ""
 	@echo "Done. Next steps:"
 	@echo "  make dev createsuperuser    # create your admin account"
