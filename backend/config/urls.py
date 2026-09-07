@@ -43,7 +43,9 @@ urlpatterns += i18n_patterns(
 )
 
 
-if settings.ENVIRONMENT == "dev":
+# Keyed on INSTALLED_APPS (dev.py adds the app), not on ENVIRONMENT: importing the
+# toolbar registers its models, which fails unless the app is installed.
+if "debug_toolbar" in settings.INSTALLED_APPS:
     from debug_toolbar.toolbar import debug_toolbar_urls
 
     urlpatterns += debug_toolbar_urls()

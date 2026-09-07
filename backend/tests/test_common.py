@@ -61,3 +61,13 @@ def test_healthcheck(client):
     resp = client.get("/healthcheck/")
     assert resp.status_code == 200
     assert resp.json() == {"status": "ok"}
+
+
+def test_suite_runs_in_test_environment(settings):
+    """Regression: `make dev test` runs inside the dev container, whose environment carries
+    ENVIRONMENT=dev from .env. The test settings must still force ENVIRONMENT=test, or
+    DEBUG flips on and urls.py tries to mount the debug toolbar without its app installed
+    (RuntimeError on the first request)."""
+    assert settings.ENVIRONMENT == "test"
+    assert settings.DEBUG is False
+    assert "debug_toolbar" not in settings.INSTALLED_APPS

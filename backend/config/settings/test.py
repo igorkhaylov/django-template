@@ -2,14 +2,15 @@
 
 Used by pytest via `DJANGO_SETTINGS_MODULE = "config.settings.test"` (pyproject.toml).
 Everything heavy (Postgres, Redis, S3/MinIO, real email, Celery broker) is swapped for
-in-memory/local backends so the suite runs anywhere, including before you have created
-your initial migrations (pytest is configured with --no-migrations).
+in-memory/local backends so the suite runs anywhere (pytest builds the schema straight
+from the models via --no-migrations, so it is independent of migration state).
 """
 
 import os
 
-# Ensure base.py's ENVIRONMENT validation/branching sees a valid value.
-os.environ.setdefault("ENVIRONMENT", "test")
+# Force ENVIRONMENT=test regardless of what the surrounding environment exports (the dev
+# container carries ENVIRONMENT=dev from .env). See config/settings/__init__.py.
+os.environ["ENVIRONMENT"] = "test"
 
 from .base import *
 from .third_party import *
