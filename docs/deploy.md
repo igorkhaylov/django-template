@@ -58,7 +58,8 @@ Create the production `./.env` (it stays on the server; CI never touches it). St
 |---|---|
 | `ENVIRONMENT` | `prod` (turns on all security flags) |
 | `DJANGO_SECRET_KEY` | strong, ≥ 50 chars: `openssl rand -hex 64` |
-| `DJANGO_ALLOWED_HOSTS` / `DJANGO_CSRF_TRUSTED_ORIGINS` / `DJANGO_CORS_ALLOWED_ORIGINS` | your real domain(s) |
+| `DJANGO_ALLOWED_HOSTS` | your real domain(s); `localhost` is added automatically for the container healthcheck |
+| `DJANGO_CSRF_TRUSTED_ORIGINS` / `DJANGO_CORS_ALLOWED_ORIGINS` | your real origin(s) **with scheme**, e.g. `https://example.com` |
 | `DJANGO_SUPERUSER_PASSWORD` | strong — placeholder values make the boot **fail** in prod |
 | `POSTGRES_PASSWORD` | strong |
 | `BACKEND_IMAGE` | `ghcr.io/<owner>/<repo>:latest`, or pin `:sha-<full-sha>` |
@@ -86,6 +87,14 @@ docker compose -f docker-compose.prod.yml ps      # backend/celery/... should be
 docker compose -f docker-compose.prod.yml logs -f backend
 curl -s http://localhost:${APP_PORT:-8050}/healthcheck/   # {"status": "ok"}
 ```
+
+If `backend` never becomes healthy, `nginx` never starts (it waits on
+`service_healthy`) — read the backend logs; the entrypoint fails fast with a message for
+each of the usual causes: the bucket is missing (`wait_for_storage`), a placeholder
+`DJANGO_SUPERUSER_PASSWORD` / weak `DJANGO_SECRET_KEY` (hard errors in stage/prod), or a
+Postgres that is not ready yet. The first admin account is created on boot from
+`DJANGO_SUPERUSER_USERNAME` / `DJANGO_SUPERUSER_PASSWORD` (once; skipped when a superuser
+already exists). Check it at `https://<domain>/en/admin/`.
 
 Point your **edge reverse proxy** (the one terminating TLS) at `APP_PORT`. It must set
 `X-Forwarded-Proto` and put the real client IP first in `X-Forwarded-For` — see

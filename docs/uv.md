@@ -10,16 +10,24 @@ the environment and never tries to build/install the project root.
 > All commands below are run from `backend/` (where `pyproject.toml` lives), or use
 > `uv run --project backend ...`.
 
-## First time
+## First time (host virtualenv for your editor)
+
+`uv.lock` is **committed** — you never need to generate it on a fresh clone. The Docker
+images install from it with `uv sync --frozen` (prod adds `--no-dev`), so the lock must
+stay in sync with `pyproject.toml`: **any change to dependencies goes through `uv add` /
+`uv remove` / `uv lock`, and the updated lock is committed together with it** (otherwise
+the next image build fails with "lockfile is out of date").
+
+The containers already have everything installed; a host virtualenv is only for the
+editor (autocomplete, ruff, pyright) and for running tests without Docker:
 
 ```bash
 cd backend
-uv lock          # generate uv.lock from pyproject.toml  (commit it!)
-uv sync          # create .venv and install runtime + dev dependencies
+uv sync          # creates backend/.venv with runtime + dev dependencies (~1 min)
+uv run pytest    # the suite needs no external services
 ```
 
-The Docker images install with `uv sync --frozen` (prod adds `--no-dev`), so **a
-committed `uv.lock` is required before building**.
+Point your editor's interpreter at `backend/.venv` (see README → Editor setup).
 
 ## Everyday commands
 
