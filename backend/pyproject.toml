@@ -66,9 +66,9 @@ DJANGO_SETTINGS_MODULE = "config.settings.test"
 python_files = ["tests.py", "test_*.py"]
 testpaths = ["tests"]
 pythonpath = ["."]
-# The template intentionally ships without migration files (see README). --no-migrations
-# tells pytest-django to build the test schema directly from the models, so the suite
-# runs even before you generate your initial migrations.
+# --no-migrations: pytest-django builds the test schema directly from the models, so the
+# suite is independent of migration state. Migration/model drift is caught separately by
+# tests/test_common.py::test_migrations_in_sync (makemigrations --check).
 addopts = "--no-migrations"
 
 [tool.ruff]

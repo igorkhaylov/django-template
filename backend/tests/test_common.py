@@ -71,3 +71,18 @@ def test_suite_runs_in_test_environment(settings):
     assert settings.ENVIRONMENT == "test"
     assert settings.DEBUG is False
     assert "debug_toolbar" not in settings.INSTALLED_APPS
+
+
+@pytest.mark.django_db
+def test_migrations_in_sync():
+    """The suite runs with --no-migrations, so nothing else would notice a model change that
+    was never turned into a migration — until `migrate` in the entrypoint silently skips it."""
+    from io import StringIO
+
+    from django.core.management import call_command
+
+    out = StringIO()
+    try:
+        call_command("makemigrations", "--check", "--dry-run", stdout=out, stderr=out)
+    except SystemExit as exc:  # makemigrations --check exits 1 when a migration is missing
+        pytest.fail(f"Models and migrations are out of sync (exit {exc.code}):\n{out.getvalue()}")
